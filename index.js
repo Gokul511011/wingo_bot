@@ -1,15 +1,12 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
-puppeteer.use(StealthPlugin());
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo 4-Digit Stealth Engine is Live!');
+    res.send('WinGo 4-Digit Engine is Live!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -18,7 +15,6 @@ app.listen(PORT, '0.0.0.0', () => {
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const MAIN_SITE_URL = 'https://www.rajastake7.com/';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -123,42 +119,21 @@ function patternEngine4(history) {
     }
 }
 
-let browser = null;
-
-async function getBrowserInstance() {
-    if (!browser || !browser.isConnected()) {
-        browser = await puppeteer.launch({
-            headless: 'new',
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu'
-            ]
-        });
-    }
-    return browser;
-}
-
 async function fetchWinGoData() {
-    let page = null;
     try {
-        const b = await getBrowserInstance();
-        page = await b.newPage();
-        
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+        const response = await axios.get(TARGET_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Referer': 'https://draw.ar-lottery01.com/'
+            },
+            timeout: 8000
+        });
 
-        // Step 1: Visit main site to establish valid Cloudflare session
-        await page.goto(MAIN_SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 3000));
-
-        // Step 2: Fetch JSON directly from inside browser context
-        let data = await page.evaluate(async (apiUrl) => {
-            let res = await fetch(apiUrl);
-            return await res.json();
-        }, TARGET_URL);
+        let data = response.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) {}
+        }
 
         let list = data?.data?.list || data?.list || data;
 
@@ -221,21 +196,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[STEALTH SUCCESS] 4-Digit Message Sent: " + nextPeriod);
+                console.log("[SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[STEALTH ERROR]:', error.message);
-        if (browser) {
-            await browser.close().catch(() => {});
-            browser = null;
-        }
-    } finally {
-        if (page) {
-            await page.close().catch(() => {});
-        }
+        console.error('[FETCH ERROR]:', error.message);
     }
 }
 
-console.log("WinGo Stealth Engine Active...");
-setInterval(fetchWinGoData, 10000);
+console.log("WinGo Light Engine Active...");
+setInterval(fetchWinGoData, 5000);
