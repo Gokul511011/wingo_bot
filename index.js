@@ -2,10 +2,10 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server to keep Render active
+// Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('WinGo Maintenance & History Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Properly Aligned Table Bot Active!'));
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Configuration
@@ -13,8 +13,8 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
 
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
-const API_URL = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}`;
+const TARGET_URL = '[https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json](https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json)';
+const API_URL = `[http://api.scraperapi.com](http://api.scraperapi.com)?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}`;
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
@@ -24,11 +24,23 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
-let maintenanceLevel = 1; // Money Management Level (Martingale)
-let historyLog = []; // Stores last 6 prediction histories
+let maintenanceLevel = 1;
+
+// Martingale Level Amounts
+const levelAmounts = {
+    1: "₹10",
+    2: "₹30",
+    3: "₹90",
+    4: "₹270",
+    5: "₹810",
+    6: "₹2430",
+    7: "₹7290"
+};
+
+let historyLog = []; // Limit: 20 rows
 
 function calculateTwoNumbers(predResult) {
-    return predResult === "BIG" ? "7 , 8" : "2 , 3";
+    return predResult === "BIG" ? "7, 8" : "2, 3";
 }
 
 function processUltraEngine(history) {
@@ -38,43 +50,36 @@ function processUltraEngine(history) {
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
 
-        let actualColor = (actualNum === 0 || actualNum === 5) ? "🟪 VIOLET" : (actualNum % 2 === 0 ? "🟥 RED" : "🟩 GREEN");
-
-        let resultBanner = "";
         let lastStatus = "";
 
-        // Evaluate previous prediction result
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
             if (lastPredictedResult === actualResult) {
                 totalWins++;
-                resultBanner = `🎉 **RESULT: WINNER!** 🎉\n`;
                 lastStatus = "✅ WIN";
-                maintenanceLevel = 1; // Reset to Level 1 on WIN
+                maintenanceLevel = 1; // Reset Level
             } else {
                 totalLosses++;
-                resultBanner = `💔 **RESULT: CHEER UP! NEXT TRY!** 💔\n`;
                 lastStatus = "❌ LOSS";
-                maintenanceLevel++; // Increase Level on LOSS for recovery
+                maintenanceLevel++; // Increase Level
             }
 
-            // Save to 6-row History Table Data
+            // Auto-Reset Table after 20 Rows
+            if (historyLog.length >= 20) {
+                historyLog = [];
+            }
+
             historyLog.unshift({
-                sno: historyLog.length + 1,
-                period: actualPeriod.slice(-4), // Last 4 digits for clean display
+                sno: String(historyLog.length + 1).padStart(2, '0'),
+                period: actualPeriod.slice(-4),
                 actual: actualResult,
-                num: actualNum,
-                color: actualColor.split(" ")[0], // Only Emoji/Name
+                num: String(actualNum),
                 target: lastPredictedResult,
                 status: lastStatus
             });
-
-            // Keep only latest 6 rows
-            if (historyLog.length > 6) historyLog.pop();
         }
 
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
-        // Trend Following Algorithm
         let historyNumbers = history.slice(0, 10).map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let resultsList = historyNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
@@ -91,7 +96,7 @@ function processUltraEngine(history) {
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
         let numbersStr = calculateTwoNumbers(predResult);
 
-        return { nextPeriod, predResult, colorStr, numbersStr, resultBanner };
+        return { nextPeriod, predResult, colorStr, numbersStr };
     } catch (e) {
         console.error("Engine Error:", e.message);
         return null;
@@ -114,43 +119,50 @@ async function fetchWinGoData() {
 
             if (pred && pred.nextPeriod !== lastSentPeriod) {
                 
-                // Build 6-Row History Table Section
-                let historyTableText = `📊 **RECENT 6 HISTORY LOG**\n\`\`\`\n`;
-                historyTableText += `S.No | Period | Actual | Num | Target | Status\n`;
-                historyTableText += `-------------------------------------------\n`;
+                let currentAmount = levelAmounts[maintenanceLevel] || `Level ${maintenanceLevel}`;
+
+                let tableHeader = `👑 **[ WINGO 1M OFFICIAL BOT ]** 👑\n` +
+                                 `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+                                 `📌 **PERIOD:** \`${pred.nextPeriod}\`\n` +
+                                 `🎯 **TARGET:** **${pred.predResult}**\n` +
+                                 `🔢 **NUMBERS:** \`${pred.numbersStr}\`\n` +
+                                 `🎨 **COLOUR:** ${pred.colorStr}\n` +
+                                 `💰 **LEVEL AMOUNT:** **Level ${maintenanceLevel} (${currentAmount})**\n` +
+                                 `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+                // Single Mono Block for Perfect Column Alignment & Clean Lines
+                let gridMsg = `\`\`\`text\n` +
+                              `📊 WINGO 1M\n` +
+                              `─────────────────────────────────────────────\n` +
+                              `SNO  PERIOD  ACTUAL  NUM  TARGET  RESULT\n` +
+                              `─────────────────────────────────────────────\n`;
 
                 if (historyLog.length === 0) {
-                    historyTableText += `Waiting for completed rounds...\n`;
+                    gridMsg += `NEW TABLE OPENED / WAITING FOR RESULTS...\n`;
                 } else {
                     historyLog.forEach((row, idx) => {
-                        let sno = String(idx + 1).padEnd(4, ' ');
-                        let prd = String(row.period).padEnd(6, ' ');
-                        let act = String(row.actual).padEnd(6, ' ');
-                        let num = String(row.num).padEnd(3, ' ');
-                        let tgt = String(row.target).padEnd(6, ' ');
+                        let sno = String(idx + 1).padStart(2, '0').padEnd(5, ' ');
+                        let prd = String(row.period).padEnd(8, ' ');
+                        let act = String(row.actual).padEnd(8, ' ');
+                        let num = String(row.num).padEnd(5, ' ');
+                        let tgt = String(row.target).padEnd(8, ' ');
                         let st = row.status;
-                        historyTableText += `${sno} | ${prd} | ${act} | ${num} | ${tgt} | ${st}\n`;
+                        gridMsg += `${sno}${prd}${act}${num}${tgt}${st}\n`;
                     });
                 }
-                historyTableText += `\`\`\`\n`;
 
-                // Main Message Template (Bold & High Visibility)
-                let msg = `⚡ **WINGO 1M ULTRA PREDICTION** ⚡\n\n` +
-                          `${pred.resultBanner}\n` +
-                          `📌 **PERIOD:** \`${pred.nextPeriod}\`\n` +
-                          `🎯 **PREDICTION:** **${pred.predResult}**\n` +
-                          `🔢 **NUMBERS:** **${pred.numbersStr}**\n` +
-                          `🎨 **COLOUR:** ${pred.colorStr}\n` +
-                          `⚠️ **MAINTENANCE LEVEL:** **Level ${maintenanceLevel}**\n\n` +
-                          `📈 **TOTAL WINS:** **${totalWins}**  |  💔 **TOTAL LOSS:** **${totalLosses}**\n\n` +
-                          `${historyTableText}`;
+                gridMsg += `─────────────────────────────────────────────\n` +
+                           `TOTAL WINS: ${totalWins}  |  TOTAL LOSS: ${totalLosses}\n` +
+                           `\`\`\`;
 
-                await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+                let finalMessage = tableHeader + gridMsg;
+
+                await bot.sendMessage(CHANNEL_ID, finalMessage, { parse_mode: 'Markdown' });
                 
                 lastSentPeriod = pred.nextPeriod;
                 lastPredictedPeriod = pred.nextPeriod;
                 lastPredictedResult = pred.predResult;
-                console.log(`[SUCCESS] Sent Prediction for Period: ${pred.nextPeriod}`);
+                console.log(`[SUCCESS] Aligned Table Sent: ${pred.nextPeriod}`);
             }
         }
     } catch (error) {
@@ -158,5 +170,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Ultra Maintenance Bot Active...");
+console.log("WinGo Aligned Table Bot Active...");
 setInterval(fetchWinGoData, 8000);
