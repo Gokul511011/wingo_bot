@@ -5,14 +5,13 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo Precision Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Dynamic Anti-Loss & Double Pattern Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
-// 50 Pages Scan (pageSize=1000 for deep historical evaluation)
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -27,6 +26,10 @@ let totalWins = 0;
 let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
+
+// Lock Tracking Variables for Loss Patterns
+let streakLockCount = 0;
+let lockedPrediction = null;
 
 const levelAmounts = {
     1: "₹10",
@@ -44,10 +47,60 @@ function advancedPatternEngine(history, currentConsecLosses) {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
+        // 🐉 1. DRAGON PATTERN OVERRIDE (Self-Decide Rule)
+        let dragonCount = 1;
+        for (let i = 0; i < allResults.length - 1; i++) {
+            if (allResults[i] === allResults[i + 1]) {
+                dragonCount++;
+            } else {
+                break;
+            }
+        }
+
+        if (dragonCount >= 3) {
+            let dragonResult = allResults[0] === "B" ? "BIG" : "SMALL";
+            streakLockCount = 0; // Reset locked pattern for Dragon
+            lockedPrediction = null;
+            return generateOutput(dragonResult, allNumbers);
+        }
+
+        // 🪞 2. DOUBLE PATTERN SCAN (BB-SS or SS-BB)
+        // Checks if current flow is in BB-SS-BB pattern sequence
+        let isDoublePattern = (allResults[0] === allResults[1]) && 
+                              (allResults[2] === allResults[3]) && 
+                              (allResults[0] !== allResults[2]);
+
+        if (isDoublePattern && currentConsecLosses < 2) {
+            // Predict the continuation of Double pattern
+            // If last was second of the pair (e.g., B B S S [now target B]), switch to opposite
+            // If last was first of pair (e.g., B B S [now target S]), stay same
+            let doubleResult = "";
+            if (allResults[0] === allResults[1]) {
+                doubleResult = allResults[0] === "B" ? "SMALL" : "BIG"; // Switch pair
+            } else {
+                doubleResult = allResults[0] === "B" ? "BIG" : "SMALL"; // Continue pair
+            }
+            return generateOutput(doubleResult, allNumbers);
+        }
+
+        // 🔄 3. LOSS PATTERN LOCK LOGIC (2+ Losses -> 5 Times Continuation)
+        if (currentConsecLosses >= 2) {
+            if (streakLockCount === 0) {
+                // Determine loss pattern trend and stick for 5 rounds
+                lockedPrediction = allResults[0] === "B" ? "BIG" : "SMALL";
+                streakLockCount = 5;
+            }
+        }
+
+        if (streakLockCount > 0 && lockedPrediction) {
+            streakLockCount--;
+            return generateOutput(lockedPrediction, allNumbers);
+        }
+
+        // 🔍 4. 50-PAGE HISTORICAL PATTERN SEARCH
         let scoreB = 0;
         let scoreS = 0;
 
-        // 1️⃣ FAST 5-PERIOD PATTERN MATCHING ACROSS 50 PAGES (1000 RECORDS)
         let last5Pattern = allResults.slice(0, 5).join("");
         let patternMatched = false;
 
@@ -55,87 +108,71 @@ function advancedPatternEngine(history, currentConsecLosses) {
             let historical5 = allResults.slice(i, i + 5).join("");
             if (last5Pattern === historical5) {
                 patternMatched = true;
-                let nextOutcome = allResults[i - 1]; // What appeared right after this pattern
+                let nextOutcome = allResults[i - 1];
                 if (nextOutcome === "B") scoreB += 4;
                 if (nextOutcome === "S") scoreS += 4;
             }
         }
 
-        // 2️⃣ KNOWN PATTERN ENGINE (Dragon, Zig-Zag, Double Mirror) IF PATTERN IS NOT ENOUGH
         if (!patternMatched || scoreB === scoreS) {
-            // 🐉 DRAGON PATTERN (3+ Continuous Same Results)
-            if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
-                if (allResults[0] === "B") scoreB += 5;
-                else scoreS += 5;
-            }
-            // ⚡ ZIG-ZAG PATTERN (B-S-B-S or S-B-S-B)
-            else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
+            // ZIG-ZAG PATTERN (B-S-B-S)
+            if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2]) {
                 if (allResults[0] === "B") scoreS += 5;
                 else scoreB += 5;
             }
-            // 🪞 DOUBLE MIRROR PATTERN (BB-SS-BB or SS-BB-SS)
-            else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
-                if (allResults[0] === "B") scoreS += 4;
-                else scoreB += 4;
-            }
-        }
-
-        // 🛡️ ANTI-LOSS FILTER ADJUSTMENT
-        if (currentConsecLosses >= 2) {
-            if (scoreB > scoreS) scoreS += 3;
-            else if (scoreS > scoreB) scoreB += 3;
         }
 
         let predResult = scoreS > scoreB ? "SMALL" : "BIG";
+        return generateOutput(predResult, allNumbers);
 
-        // 🎯 EXACT 50-PAGE "LAST 2 NUMBERS" MAPPING LOGIC
-        let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let num1 = allNumbers[0]; // Last number
-        let num2 = allNumbers[1]; // 2nd last number
-
-        let targetNumbers = [];
-
-        // Search for the sequence [num2, num1] in 50 pages history
-        let matchIndex = -1;
-        for (let i = 1; i < allNumbers.length - 2; i++) {
-            if (allNumbers[i + 1] === num2 && allNumbers[i] === num1) {
-                matchIndex = i;
-                break;
-            }
-        }
-
-        if (matchIndex !== -1 && matchIndex > 0 && matchIndex < allNumbers.length - 1) {
-            // 📍 Found match in 50 pages: Take 1 number ABOVE and 1 number BELOW from history
-            let numAbove = allNumbers[matchIndex - 1];
-            let numBelow = allNumbers[matchIndex + 1];
-
-            if (candidateNums.includes(numAbove)) targetNumbers.push(numAbove);
-            if (candidateNums.includes(numBelow) && !targetNumbers.includes(numBelow)) targetNumbers.push(numBelow);
-        }
-
-        // 📍 If match not found or logic needs fallback: Use Center & 2-Above logic
-        if (targetNumbers.length < 2) {
-            let centerNum = candidateNums[2]; // Center of BIG (7) or SMALL (2)
-            let twoAboveNum = candidateNums[0]; // Top candidate
-
-            if (!targetNumbers.includes(centerNum)) targetNumbers.push(centerNum);
-            if (!targetNumbers.includes(twoAboveNum) && targetNumbers.length < 2) targetNumbers.push(twoAboveNum);
-
-            // Fill remaining if needed
-            for (let num of candidateNums) {
-                if (targetNumbers.length >= 2) break;
-                if (!targetNumbers.includes(num)) targetNumbers.push(num);
-            }
-        }
-
-        let numbersStr = targetNumbers.join(", ");
-        let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
-
-        return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
+        return generateOutput("BIG", [7, 8]);
     }
+}
+
+// Helper to generate Number & Color output mapping
+function generateOutput(predResult, allNumbers) {
+    let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
+    let num1 = allNumbers[0];
+    let num2 = allNumbers[1];
+
+    let targetNumbers = [];
+
+    // Search last 2 numbers in 50 pages history
+    let matchIndex = -1;
+    for (let i = 1; i < allNumbers.length - 2; i++) {
+        if (allNumbers[i + 1] === num2 && allNumbers[i] === num1) {
+            matchIndex = i;
+            break;
+        }
+    }
+
+    if (matchIndex !== -1 && matchIndex > 0 && matchIndex < allNumbers.length - 1) {
+        let numAbove = allNumbers[matchIndex - 1];
+        let numBelow = allNumbers[matchIndex + 1];
+
+        if (candidateNums.includes(numAbove)) targetNumbers.push(numAbove);
+        if (candidateNums.includes(numBelow) && !targetNumbers.includes(numBelow)) targetNumbers.push(numBelow);
+    }
+
+    if (targetNumbers.length < 2) {
+        let centerNum = candidateNums[2];
+        let twoAboveNum = candidateNums[0];
+
+        if (!targetNumbers.includes(centerNum)) targetNumbers.push(centerNum);
+        if (!targetNumbers.includes(twoAboveNum) && targetNumbers.length < 2) targetNumbers.push(twoAboveNum);
+
+        for (let num of candidateNums) {
+            if (targetNumbers.length >= 2) break;
+            if (!targetNumbers.includes(num)) targetNumbers.push(num);
+        }
+    }
+
+    let numbersStr = targetNumbers.join(", ");
+    let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+
+    return { predResult, targetNumbers, numbersStr, colorStr };
 }
 
 async function fetchWinGoData() {
@@ -220,5 +257,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo High-Accuracy Anti-Loss Bot Active...");
+console.log("WinGo Dynamic Anti-Loss & Double Pattern Engine Active...");
 setInterval(fetchWinGoData, 12000);
