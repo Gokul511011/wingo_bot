@@ -24,7 +24,7 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
-let consecutiveLosses = 0;
+let consecLosses = 0; // Correctly declared variable
 let maintenanceLevel = 1;
 
 const levelAmounts = {
@@ -38,7 +38,7 @@ const levelAmounts = {
 };
 
 // 🧠 HIGH-ACCURACY ANTI-LOSS PATTERN ENGINE
-function advancedPatternEngine(history, consecLosses) {
+function advancedPatternEngine(history, currentConsecLosses) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
@@ -46,7 +46,7 @@ function advancedPatternEngine(history, consecLosses) {
         let scoreB = 0;
         let scoreS = 0;
 
-        // 🐉 1. DRAGON PATTERN SCAN (Strong Weight)
+        // 🐉 1. DRAGON PATTERN SCAN
         let dragonCount = 1;
         for (let i = 0; i < allResults.length - 1; i++) {
             if (allResults[i] === allResults[i + 1]) {
@@ -95,9 +95,8 @@ function advancedPatternEngine(history, consecLosses) {
             }
         }
 
-        // 🛡️ 4. ANTI-STREAK FILTER (Loss Control)
-        // தொடர்ச்சியா Loss வரும் போது Opposite Trend Preference கொடுத்து Protect பண்ணும்
-        if (consecLosses >= 2) {
+        // 🛡️ 4. ANTI-STREAK FILTER
+        if (currentConsecLosses >= 2) {
             if (scoreB > scoreS) { scoreS += 2; }
             else if (scoreS > scoreB) { scoreB += 2; }
         }
