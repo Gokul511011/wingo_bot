@@ -56,7 +56,7 @@ function patternEngine4(history) {
         let matchB = 0;
         let matchS = 0;
 
-        // Primary Match: 4-Digit Historical Scan
+        // Primary Match: 4-Digit Scan
         for (let i = 1; i < allResults.length - 4; i++) {
             let pastPattern = allResults.slice(i, i + 4).join("");
             if (pattern4 === pastPattern) {
@@ -66,7 +66,7 @@ function patternEngine4(history) {
             }
         }
 
-        // Secondary Fallback: 3-Digit Historical Scan
+        // Secondary Fallback: 3-Digit Scan
         if (matchB === 0 && matchS === 0) {
             for (let i = 1; i < allResults.length - 3; i++) {
                 let pastPattern = allResults.slice(i, i + 3).join("");
@@ -131,13 +131,14 @@ function patternEngine4(history) {
 
 async function fetchWinGoData() {
     try {
-        const target50Url = `${TARGET_URL}?pageSize=500&pageNo=1`;
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(target50Url);
+        // Safe standard URL format to avoid ScraperAPI 403 block
+        const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}&render=false`;
         
         const response = await axios.get(scraperUrl, { 
-            timeout: 15000,
+            timeout: 20000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'Accept': 'application/json, text/plain, */*',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             }
         });
         
@@ -215,5 +216,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 4-Digit Pattern Engine Active...");
-setInterval(fetchWinGoData, 5000);
+console.log("WinGo Fixed Engine Active...");
+setInterval(fetchWinGoData, 6000);
