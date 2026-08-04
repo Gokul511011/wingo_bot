@@ -11,7 +11,7 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
+const SCRAPER_API_KEY = '792cc6afea63006ca27f3481bf1c1ef0'; // Updated API Key
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -124,9 +124,10 @@ async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        // ScraperAPI render=true parameter added to bypass Cloudflare WAF
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&render=true&url=" + encodeURIComponent(TARGET_URL);
         
-        const response = await axios.get(scraperUrl, { timeout: 25000 });
+        const response = await axios.get(scraperUrl, { timeout: 30000 });
         let data = response.data;
 
         if (typeof data === 'string') {
@@ -245,4 +246,5 @@ async function fetchWinGoData() {
 }
 
 console.log("WinGo ScraperAPI 4-Digit Bot Active...");
-setInterval(fetchWinGoData, 8000);
+// Request interval increased to 15s to manage ScraperAPI render requests
+setInterval(fetchWinGoData, 15000);
