@@ -1,24 +1,26 @@
-const axios = require('axios');
-const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+const TelegramBot = require('node-telegram-bot-api');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+puppeteer.use(StealthPlugin());
 
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo 4-Digit Pattern Engine is Online!');
+    res.send('WinGo Stealth Engine is Live!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Configuration
+// Telegram Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
@@ -42,13 +44,12 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Strict 4-Digit Sequence + Up/Down Number Scan Engine
+// Strict 4-Digit Sequence + Up/Down Number Scan Engine
 function patternEngine4(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // 1. Take last 4-digit trend (e.g. BSBS)
         let pattern4 = allResults.slice(0, 4).join("");
         let pattern3 = allResults.slice(0, 3).join("");
 
@@ -76,7 +77,6 @@ function patternEngine4(history) {
         }
 
         let predResult = "BIG";
-
         if (matchS > matchB) {
             predResult = "SMALL";
         } else if (matchB > matchS) {
@@ -85,7 +85,6 @@ function patternEngine4(history) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
-        // 2. 2-Number Up & Down Sequence Matching
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let num1 = allNumbers[0];
         let num2 = allNumbers[1];
@@ -125,23 +124,37 @@ function patternEngine4(history) {
     }
 }
 
-async function fetchWinGoData() {
-    try {
-        // Multi-Bypass Relay
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL + '?pageSize=50&pageNo=1')}`;
-        
-        const response = await axios.get(proxyUrl, { 
-            timeout: 15000,
-            headers: {
-                'Accept': 'application/json, text/plain, */*',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
+let browser = null;
+
+async function getBrowserInstance() {
+    if (!browser) {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1920,1080'
+            ]
         });
+    }
+    return browser;
+}
+
+async function fetchWinGoData() {
+    let page = null;
+    try {
+        const b = await getBrowserInstance();
+        page = await b.newPage();
         
-        let data = response.data;
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) {}
-        }
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
+        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        const content = await page.evaluate(() => document.body.innerText);
+        let data = JSON.parse(content);
 
         let list = data?.data?.list || data?.list || data;
 
@@ -204,13 +217,21 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Message Sent: " + nextPeriod);
+                console.log("[STEALTH SUCCESS] Message Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[SYNC ERROR]:', error.message);
+        console.error('[STEALTH ERROR]:', error.message);
+        if (browser) {
+            await browser.close().catch(() => {});
+            browser = null;
+        }
+    } finally {
+        if (page) {
+            await page.close().catch(() => {});
+        }
     }
 }
 
-console.log("WinGo Proxy Bypass Active...");
-setInterval(fetchWinGoData, 6000);
+console.log("WinGo Stealth Puppeteer Engine Active...");
+setInterval(fetchWinGoData, 12000);
