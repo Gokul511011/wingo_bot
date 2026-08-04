@@ -17,8 +17,8 @@ app.listen(PORT, '0.0.0.0', () => {
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
+const SCRAPER_API_KEY = '792cc6afea63006ca27f3481bf1c1ef0';
 
-// Direct Target URL
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -34,11 +34,9 @@ let maintenanceLevel = 1;
 let consecutiveLosses = 0;
 let winStreak = 0;
 
-// Pause Timers
 let isCoolingDown = false;
 let isMaintenancePause = false;
 
-// Martingale Level Amounts
 const levelAmounts = {
     1: "₹10",
     2: "₹30",
@@ -49,7 +47,6 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// Advanced Deep Analysis Engine
 function advancedPredictionEngine(history) {
     try {
         let numbers = history.slice(0, 30).map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -97,13 +94,12 @@ async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        // Direct Call with Browser User-Agent Headers
-        const response = await axios.get(TARGET_URL, { 
-            timeout: 15000,
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        
+        const response = await axios.get(scraperUrl, { 
+            timeout: 25000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://www.rajastake7.com/'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
         
@@ -225,5 +221,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo King Prediction Direct Engine Active...");
+console.log("WinGo King Prediction Engine Active...");
 setInterval(fetchWinGoData, 8000);
