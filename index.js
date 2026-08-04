@@ -124,9 +124,10 @@ async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&render=true&url=" + encodeURIComponent(TARGET_URL);
+        // Fast JSON fetch without render parameter
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
         
-        const response = await axios.get(scraperUrl, { timeout: 30000 });
+        const response = await axios.get(scraperUrl, { timeout: 15000 });
         let data = response.data;
 
         if (typeof data === 'string') {
