@@ -128,17 +128,13 @@ function patternEngine4(history) {
 
 async function fetchWinGoData() {
     try {
-        // ScraperAPI Cloudflare Bypass Parameters
-        const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}&keep_headers=true&country_code=us`;
-        
-        const response = await axios.get(scraperUrl, { 
-            timeout: 25000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache'
-            }
+        // Correct Standard ScraperAPI Request Format
+        const response = await axios.get('http://api.scraperapi.com', {
+            params: {
+                api_key: SCRAPER_API_KEY,
+                url: TARGET_URL
+            },
+            timeout: 20000
         });
         
         let data = response.data;
@@ -215,5 +211,6 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Ultra-Bypass Engine Active...");
-setInterval(fetchWinGoData, 8000);
+console.log("WinGo Engine Active...");
+// Delay interval set to 10s to prevent Rate-Limits
+setInterval(fetchWinGoData, 10000);
