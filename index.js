@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('WinGo Properly Aligned Table Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo Aligned Table Bot Active!'));
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
 // Configuration
@@ -119,26 +119,25 @@ async function fetchWinGoData() {
 
             if (pred && pred.nextPeriod !== lastSentPeriod) {
                 
-                let currentAmount = levelAmounts[maintenanceLevel] || `Level ${maintenanceLevel}`;
+                let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
-                let tableHeader = `👑 **[ WINGO 1M OFFICIAL BOT ]** 👑\n` +
-                                 `━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-                                 `📌 **PERIOD:** \`${pred.nextPeriod}\`\n` +
-                                 `🎯 **TARGET:** **${pred.predResult}**\n` +
-                                 `🔢 **NUMBERS:** \`${pred.numbersStr}\`\n` +
-                                 `🎨 **COLOUR:** ${pred.colorStr}\n` +
-                                 `💰 **LEVEL AMOUNT:** **Level ${maintenanceLevel} (${currentAmount})**\n` +
-                                 `━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+                let tableHeader = "👑 **[ WINGO 1M OFFICIAL BOT ]** 👑\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "📌 **PERIOD:** `" + pred.nextPeriod + "`\n" +
+                                 "🎯 **TARGET:** **" + pred.predResult + "**\n" +
+                                 "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                                 "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                                 "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
-                // Single Mono Block for Perfect Column Alignment & Clean Lines
-                let gridMsg = `\`\`\`text\n` +
-                              `📊 WINGO 1M\n` +
-                              `─────────────────────────────────────────────\n` +
-                              `SNO  PERIOD  ACTUAL  NUM  TARGET  RESULT\n` +
-                              `─────────────────────────────────────────────\n`;
+                let gridMsg = "```text\n" +
+                              "📊 WINGO 1M\n" +
+                              "─────────────────────────────────────────────\n" +
+                              "SNO  PERIOD  ACTUAL  NUM  TARGET  RESULT\n" +
+                              "─────────────────────────────────────────────\n";
 
                 if (historyLog.length === 0) {
-                    gridMsg += `NEW TABLE OPENED / WAITING FOR RESULTS...\n`;
+                    gridMsg += "NEW TABLE OPENED / WAITING FOR RESULTS...\n";
                 } else {
                     historyLog.forEach((row, idx) => {
                         let sno = String(idx + 1).padStart(2, '0').padEnd(5, ' ');
@@ -147,13 +146,13 @@ async function fetchWinGoData() {
                         let num = String(row.num).padEnd(5, ' ');
                         let tgt = String(row.target).padEnd(8, ' ');
                         let st = row.status;
-                        gridMsg += `${sno}${prd}${act}${num}${tgt}${st}\n`;
+                        gridMsg += sno + prd + act + num + tgt + st + "\n";
                     });
                 }
 
-                gridMsg += `─────────────────────────────────────────────\n` +
-                           `TOTAL WINS: ${totalWins}  |  TOTAL LOSS: ${totalLosses}\n` +
-                           `\`\`\`;
+                gridMsg += "─────────────────────────────────────────────\n" +
+                           "TOTAL WINS: " + totalWins + "  |  TOTAL LOSS: " + totalLosses + "\n" +
+                           "```";
 
                 let finalMessage = tableHeader + gridMsg;
 
@@ -162,7 +161,7 @@ async function fetchWinGoData() {
                 lastSentPeriod = pred.nextPeriod;
                 lastPredictedPeriod = pred.nextPeriod;
                 lastPredictedResult = pred.predResult;
-                console.log(`[SUCCESS] Aligned Table Sent: ${pred.nextPeriod}`);
+                console.log("[SUCCESS] Aligned Table Sent: " + pred.nextPeriod);
             }
         }
     } catch (error) {
