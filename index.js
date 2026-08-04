@@ -125,7 +125,7 @@ function patternEngine4(history) {
 let browser = null;
 
 async function getBrowserInstance() {
-    if (!browser) {
+    if (!browser || !browser.isConnected()) {
         browser = await puppeteer.launch({
             headless: 'new',
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
@@ -149,10 +149,20 @@ async function fetchWinGoData() {
         
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
-        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+        await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-        const content = await page.evaluate(() => document.body.innerText);
-        let data = JSON.parse(content);
+        let content = await page.evaluate(() => document.body.innerText || document.body.textContent);
+
+        // Safe JSON extraction logic
+        let jsonStart = content.indexOf('{');
+        let jsonEnd = content.lastIndexOf('}');
+
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error("No valid JSON structure found in page content");
+        }
+
+        let cleanJsonString = content.substring(jsonStart, jsonEnd + 1);
+        let data = JSON.parse(cleanJsonString);
 
         let list = data?.data?.list || data?.list || data;
 
