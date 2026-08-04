@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo Telegram Engine is Online!');
+    res.send('WinGo 4-Digit Telegram Engine is Online!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -47,18 +47,20 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Strict 4-Digit Sequence + Up/Down Number Scan Engine
+// 🎯 STRICT 4-DIGIT PATTERN ENGINE (No 7-Digit Logic)
 function patternEngine4(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
+        // 1. Scan Last 4-Digit Trend Sequence (e.g. BSBS / BSBB)
         let pattern4 = allResults.slice(0, 4).join("");
         let pattern3 = allResults.slice(0, 3).join("");
 
         let matchB = 0;
         let matchS = 0;
 
+        // Check history for exact 4-digit sequence matches
         for (let i = 1; i < allResults.length - 4; i++) {
             let pastPattern = allResults.slice(i, i + 4).join("");
             if (pattern4 === pastPattern) {
@@ -68,6 +70,7 @@ function patternEngine4(history) {
             }
         }
 
+        // Fallback to 3-digit if 4-digit pattern match is insufficient
         if (matchB === 0 && matchS === 0) {
             for (let i = 1; i < allResults.length - 3; i++) {
                 let pastPattern = allResults.slice(i, i + 3).join("");
@@ -88,6 +91,7 @@ function patternEngine4(history) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
+        // 2. Scan 2-Number Up/Down Match Strategy
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let num1 = allNumbers[0];
         let num2 = allNumbers[1];
@@ -122,7 +126,7 @@ function patternEngine4(history) {
 
         return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
-        console.error("4-Digit Scan Engine Error:", e.message);
+        console.error("4-Digit Engine Calculation Error:", e.message);
         return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
@@ -209,7 +213,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Telegram Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -217,5 +221,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Mobile Session Engine Active...");
+console.log("WinGo Pure 4-Digit Engine Active...");
 setInterval(fetchWinGoData, 5000);
