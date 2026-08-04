@@ -1,16 +1,14 @@
 {
   "name": "wingo-bot",
   "version": "1.0.0",
-  "description": "WinGo 4-Digit Pattern Engine",
+  "description": "WinGo 4-Digit ScraperAPI Engine",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "express": "^4.21.2",
-    "node-telegram-bot-api": "^0.66.0",
-    "puppeteer": "^22.0.0",
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "node-telegram-bot-api": "^0.66.0"
   }
 }
