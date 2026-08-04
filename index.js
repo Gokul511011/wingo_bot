@@ -9,7 +9,7 @@ app.get('/', (req, res) => res.send('WinGo High-Accuracy Anti-Loss Engine Active
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
-const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxUU';
+const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
@@ -24,7 +24,7 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
-let consecLosses = 0; // Correctly declared variable
+let consecLosses = 0;
 let maintenanceLevel = 1;
 
 const levelAmounts = {
