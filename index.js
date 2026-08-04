@@ -56,7 +56,6 @@ function patternEngine4(history) {
         let matchB = 0;
         let matchS = 0;
 
-        // Primary Match: 4-Digit Scan
         for (let i = 1; i < allResults.length - 4; i++) {
             let pastPattern = allResults.slice(i, i + 4).join("");
             if (pattern4 === pastPattern) {
@@ -66,7 +65,6 @@ function patternEngine4(history) {
             }
         }
 
-        // Secondary Fallback: 3-Digit Scan
         if (matchB === 0 && matchS === 0) {
             for (let i = 1; i < allResults.length - 3; i++) {
                 let pastPattern = allResults.slice(i, i + 3).join("");
@@ -90,8 +88,8 @@ function patternEngine4(history) {
 
         // 2. 2-Number Up & Down Sequence Matching
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let num1 = allNumbers[0]; // Last Number
-        let num2 = allNumbers[1]; // Second Last Number
+        let num1 = allNumbers[0];
+        let num2 = allNumbers[1];
 
         let numFreqMap = {};
 
@@ -109,7 +107,6 @@ function patternEngine4(history) {
             }
         }
 
-        // Fallback: Recent Hot Numbers
         if (Object.keys(numFreqMap).length === 0) {
             allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
                 numFreqMap[n] = (numFreqMap[n] || 0) + 1;
@@ -131,14 +128,16 @@ function patternEngine4(history) {
 
 async function fetchWinGoData() {
     try {
-        // Safe standard URL format to avoid ScraperAPI 403 block
-        const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}&render=false`;
+        // ScraperAPI Cloudflare Bypass Parameters
+        const scraperUrl = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}&keep_headers=true&country_code=us`;
         
         const response = await axios.get(scraperUrl, { 
-            timeout: 20000,
+            timeout: 25000,
             headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache'
             }
         });
         
@@ -216,5 +215,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Fixed Engine Active...");
-setInterval(fetchWinGoData, 6000);
+console.log("WinGo Ultra-Bypass Engine Active...");
+setInterval(fetchWinGoData, 8000);
