@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo 7-Sequence Pattern Engine is Online!');
+    res.send('WinGo 4-Digit Pattern Engine is Online!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -43,44 +43,37 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Strict 7-Sequence Pattern Engine based on 500 Historical Results
-function patternEngine7(history) {
+// 🎯 Strict 4-Digit Sequence + Up/Down Number Scan Engine
+function patternEngine4(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // Take last 7 trend (e.g., BSBSBBS)
-        let pattern7 = allResults.slice(0, 7).join("");
-        let pattern6 = allResults.slice(0, 6).join("");
+        // 1. Take last 4-digit trend (e.g. BSBS)
+        let pattern4 = allResults.slice(0, 4).join("");
+        let pattern3 = allResults.slice(0, 3).join("");
 
         let matchB = 0;
         let matchS = 0;
-        let matchedNumbers = [];
 
-        // Primary Match: 7-Sequence Historical Scan
-        for (let i = 1; i < allResults.length - 7; i++) {
-            let pastPattern = allResults.slice(i, i + 7).join("");
-            if (pattern7 === pastPattern) {
+        // Primary Match: 4-Digit Historical Scan
+        for (let i = 1; i < allResults.length - 4; i++) {
+            let pastPattern = allResults.slice(i, i + 4).join("");
+            if (pattern4 === pastPattern) {
                 let nextResult = allResults[i - 1];
-                let nextNum = allNumbers[i - 1];
-
                 if (nextResult === "B") matchB++;
                 if (nextResult === "S") matchS++;
-                matchedNumbers.push(nextNum);
             }
         }
 
-        // Secondary Match: Fallback to 6-Sequence if 7-Sequence match count is 0
+        // Secondary Fallback: 3-Digit Historical Scan
         if (matchB === 0 && matchS === 0) {
-            for (let i = 1; i < allResults.length - 6; i++) {
-                let pastPattern = allResults.slice(i, i + 6).join("");
-                if (pattern6 === pastPattern) {
+            for (let i = 1; i < allResults.length - 3; i++) {
+                let pastPattern = allResults.slice(i, i + 3).join("");
+                if (pattern3 === pastPattern) {
                     let nextResult = allResults[i - 1];
-                    let nextNum = allNumbers[i - 1];
-
                     if (nextResult === "B") matchB++;
                     if (nextResult === "S") matchS++;
-                    matchedNumbers.push(nextNum);
                 }
             }
         }
@@ -92,25 +85,38 @@ function patternEngine7(history) {
         } else if (matchB > matchS) {
             predResult = "BIG";
         } else {
-            // Fallback to recent continuation trend if no pattern matches
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
+        // 2. 2-Number Up & Down Sequence Matching
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let freqMap = {};
+        let num1 = allNumbers[0]; // Last Number
+        let num2 = allNumbers[1]; // Second Last Number
 
-        matchedNumbers.filter(n => candidateNums.includes(n)).forEach(n => {
-            freqMap[n] = (freqMap[n] || 0) + 1;
-        });
+        let numFreqMap = {};
 
-        // If no past pattern numbers matched, take hot numbers from last 15 draws
-        if (Object.keys(freqMap).length === 0) {
+        for (let i = 1; i < allNumbers.length - 2; i++) {
+            if (allNumbers[i] === num1 && allNumbers[i + 1] === num2) {
+                let numAbove = allNumbers[i - 1];
+                let numBelow = allNumbers[i + 2];
+
+                if (candidateNums.includes(numAbove)) {
+                    numFreqMap[numAbove] = (numFreqMap[numAbove] || 0) + 3;
+                }
+                if (numBelow !== undefined && candidateNums.includes(numBelow)) {
+                    numFreqMap[numBelow] = (numFreqMap[numBelow] || 0) + 1;
+                }
+            }
+        }
+
+        // Fallback: Recent Hot Numbers
+        if (Object.keys(numFreqMap).length === 0) {
             allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
-                freqMap[n] = (freqMap[n] || 0) + 1;
+                numFreqMap[n] = (numFreqMap[n] || 0) + 1;
             });
         }
 
-        candidateNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
+        candidateNums.sort((a, b) => (numFreqMap[b] || 0) - (numFreqMap[a] || 0));
         let targetNumbers = [candidateNums[0], candidateNums[1]];
 
         let numbersStr = targetNumbers.join(", ");
@@ -118,7 +124,7 @@ function patternEngine7(history) {
 
         return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
-        console.error("7-Pattern Engine Error:", e.message);
+        console.error("4-Digit Scan Engine Error:", e.message);
         return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
@@ -175,7 +181,7 @@ async function fetchWinGoData() {
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                let pred = patternEngine7(list);
+                let pred = patternEngine4(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -209,5 +215,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 7-Sequence Pattern Engine Active...");
+console.log("WinGo 4-Digit Pattern Engine Active...");
 setInterval(fetchWinGoData, 5000);
