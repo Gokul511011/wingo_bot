@@ -26,6 +26,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
+let lastPredictedNumbers = [];
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
@@ -42,7 +43,7 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Fast Pattern Sequence + RNG Hybrid Prediction Engine
+// 🎯 Smart Hybrid RNG + Pattern Engine
 function hybridRNGPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -97,10 +98,10 @@ function hybridRNGPatternEngine(history) {
         let numbersStr = targetNumbers.join(", ");
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
 
-        return { predResult, numbersStr, colorStr };
+        return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
         console.error("Hybrid RNG Engine Error:", e.message);
-        return { predResult: "BIG", numbersStr: "7, 8", colorStr: "🟢 GREEN" };
+        return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
 
@@ -132,10 +133,18 @@ async function fetchWinGoData() {
             let cheerMsgText = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+                // Check if Exact Number Hit (Jackpot)
+                let isNumberHit = lastPredictedNumbers.includes(actualNum);
+
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
                     maintenanceLevel = 1;
-                    cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
+
+                    if (isNumberHit) {
+                        cheerMsgText = "💥 **WINNER JACKPOT** 💥\nCONGRATULATIONS 💐🎉";
+                    } else {
+                        cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
+                    }
                 } else {
                     totalLosses++;
                     maintenanceLevel++;
@@ -173,6 +182,7 @@ async function fetchWinGoData() {
                 lastSentPeriod = nextPeriod;
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
+                lastPredictedNumbers = pred.targetNumbers;
                 console.log("[SUCCESS] Message Sent: " + nextPeriod);
             }
         }
@@ -181,5 +191,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Continuous Fast Engine Active...");
+console.log("WinGo Jackpot Engine Active...");
 setInterval(fetchWinGoData, 5000);
