@@ -14,11 +14,19 @@ async function fetchWinGoData() {
     try {
         const response = await axios.get(API_URL, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://ar-lottery01.com/'
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Origin': 'https://ar-lottery01.com',
+                'Referer': 'https://ar-lottery01.com/',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-site',
+                'Sec-Ch-Ua': '"Not)A;Brand";v="99", "Google Chrome";v="127", "Chromium";v="127"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"'
             },
-            timeout: 5000
+            timeout: 8000
         });
 
         if (response.data && response.data.data && response.data.data.list) {
@@ -52,4 +60,4 @@ async function fetchWinGoData() {
 }
 
 console.log("WinGo 1M Node.js Server Bot Started...");
-setInterval(fetchWinGoData, 3000);
+setInterval(fetchWinGoData, 4000); // 4 seconds delay to avoid aggressive rate limits
