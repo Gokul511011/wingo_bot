@@ -6,15 +6,14 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (req, res) => res.send('WinGo Aligned Table Bot Active!'));
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
 
-const TARGET_URL = '[https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json](https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json)';
-const API_URL = `[http://api.scraperapi.com](http://api.scraperapi.com)?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(TARGET_URL)}`;
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
@@ -105,7 +104,10 @@ function processUltraEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const response = await axios.get(API_URL, { timeout: 25000 });
+        // Correct ScraperAPI URL Construction
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        
+        const response = await axios.get(scraperUrl, { timeout: 25000 });
         let data = response.data;
 
         if (typeof data === 'string') {
