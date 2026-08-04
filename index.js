@@ -1,12 +1,15 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo 4-Digit Engine is Live!');
+    res.send('WinGo 4-Digit Stealth Engine is Live!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -120,21 +123,36 @@ function patternEngine4(history) {
 }
 
 async function fetchWinGoData() {
+    let browser = null;
     try {
-        const response = await axios.get(TARGET_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://draw.ar-lottery01.com/'
-            },
-            timeout: 8000
+        browser = await puppeteer.launch({
+            headless: 'new',
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1920,1080'
+            ]
         });
 
-        let data = response.data;
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) {}
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
+        // Go to API directly with networkidle2
+        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        let content = await page.evaluate(() => document.body.innerText || document.body.textContent);
+
+        // Regex to extract valid JSON array/object cleanly
+        let jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("No JSON found in response");
         }
 
+        let data = JSON.parse(jsonMatch[0]);
         let list = data?.data?.list || data?.list || data;
 
         if (Array.isArray(list) && list.length > 0) {
@@ -196,13 +214,18 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
+                console.log("[STEALTH SUCCESS] Prediction Sent for Period: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
+        console.error('[STEALTH ERROR]:', error.message);
+    } finally {
+        if (browser) {
+            await browser.close().catch(() => {});
+        }
     }
 }
 
-console.log("WinGo Light Engine Active...");
-setInterval(fetchWinGoData, 5000);
+console.log("WinGo Stealth Engine Active...");
+// Run every 12 seconds to save RAM while fetching live periods
+setInterval(fetchWinGoData, 12000);
