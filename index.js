@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo King Prediction Bot is Online!');
+    res.send('WinGo King Prediction Engine is Online!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -33,7 +33,6 @@ let totalLosses = 0;
 let maintenanceLevel = 1;
 let isMaintenancePause = false;
 
-// 2 Level Loss Recovery Skip Counter
 let skipPeriodsRemaining = 0;
 
 const levelAmounts = {
@@ -46,51 +45,61 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 40+ Advanced High Precision Big/Small & Number Prediction Engine
-function advanced40PatternEngine(history) {
+// 🔍 50-Page Historical Pattern Matching & Number Analysis Engine
+function deep50PagePatternEngine(history) {
     try {
-        let numbers = history.slice(0, 30).map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let results = numbers.map(n => n >= 5 ? "BIG" : "SMALL");
+        let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
+        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let p1 = results[0], p2 = results[1], p3 = results[2], p4 = results[3], p5 = results[4];
+        // Extract Current Latest 5 Pattern Sequence
+        let current5Pattern = allResults.slice(0, 5).join("-");
+
+        let matchBigCount = 0;
+        let matchSmallCount = 0;
+        let matchedTargetNumbers = [];
+
+        // Scan full history to find where the last 5 sequence occurred before
+        for (let i = 1; i < allResults.length - 5; i++) {
+            let past5Pattern = allResults.slice(i, i + 5).join("-");
+
+            if (current5Pattern === past5Pattern) {
+                let nextOutcome = allResults[i - 1]; // What came immediately after this pattern
+                let nextNum = allNumbers[i - 1];
+
+                if (nextOutcome === "BIG") matchBigCount++;
+                if (nextOutcome === "SMALL") matchSmallCount++;
+                matchedTargetNumbers.push(nextNum);
+            }
+        }
+
+        // Determine Final Outcome based on Historical High Match
         let predResult = "BIG";
-
-        // 40+ Pattern Conditions & Trend Rules
-        if (p1 === p2 && p2 === p3 && p3 === p4) predResult = p1; // Dragon Long Streak
-        else if (p1 !== p2 && p2 !== p3 && p3 !== p4) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // Single Zigzag (B-S-B-S)
-        else if (p1 === p2 && p3 === p4 && p1 !== p3) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // Double Pair (BB-SS-BB)
-        else if (p1 === p2 && p2 === p3 && p3 !== p4) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // 3-1 Pattern Shift
-        else if (p1 !== p2 && p2 === p3 && p3 === p4) predResult = p1; // Reverse Catch
-        else if (p1 === p3 && p2 === p4 && p1 !== p2) predResult = p1; // Mirror Pattern (B-S-B-S)
-        else {
-            let bigCount = results.slice(0, 10).filter(r => r === "BIG").length;
-            predResult = bigCount <= 4 ? "BIG" : "SMALL"; // Majority Trend Weight
+        if (matchSmallCount > matchBigCount) {
+            predResult = "SMALL";
+        } else if (matchBigCount === matchSmallCount) {
+            // Fallback: Recent top trend
+            let recentBigs = allResults.slice(0, 10).filter(r => r === "BIG").length;
+            predResult = recentBigs <= 4 ? "BIG" : "SMALL";
         }
 
-        // Most Frequent & Hot High Win Numbers Extraction
-        let targetNumbers = [];
-        if (predResult === "BIG") {
-            let bigNums = [5, 6, 7, 8, 9];
-            let recentBigs = numbers.filter(n => n >= 5);
-            let freqMap = {};
-            recentBigs.forEach(n => freqMap[n] = (freqMap[n] || 0) + 1);
-            bigNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
-            targetNumbers = [bigNums[0], bigNums[1]];
-        } else {
-            let smallNums = [0, 1, 2, 3, 4];
-            let recentSmalls = numbers.filter(n => n < 5);
-            let freqMap = {};
-            recentSmalls.forEach(n => freqMap[n] = (freqMap[n] || 0) + 1);
-            smallNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
-            targetNumbers = [smallNums[0], smallNums[1]];
-        }
+        // Filter High Precision Winning Numbers
+        let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
+        let freqMap = {};
+
+        matchedTargetNumbers.filter(n => candidateNums.includes(n)).forEach(n => {
+            freqMap[n] = (freqMap[n] || 0) + 1;
+        });
+
+        // Sort by highest occurrence in history matches
+        candidateNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
+        let targetNumbers = [candidateNums[0], candidateNums[1]];
 
         let numbersStr = targetNumbers.join(", ");
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
 
         return { predResult, numbersStr, colorStr };
     } catch (e) {
-        console.error("Prediction Engine Error:", e.message);
+        console.error("Deep Pattern Matching Error:", e.message);
         return { predResult: "BIG", numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
@@ -99,7 +108,9 @@ async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        // Fetching 50 Pages worth of Data via ScraperAPI
+        const target50Url = `${TARGET_URL}?pageSize=500&pageNo=1`;
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(target50Url);
         
         const response = await axios.get(scraperUrl, { 
             timeout: 25000,
@@ -134,12 +145,10 @@ async function fetchWinGoData() {
                     maintenanceLevel++;
                     cheerMsgText = "Better Luck Next Time 👍";
 
-                    // If 2 Levels Loss occurs -> Wait/Skip 3 Periods in Same Pattern
                     if (maintenanceLevel === 3) {
                         skipPeriodsRemaining = 3;
                     }
 
-                    // Level 7 Taandi Loss Aana 1 HR Pause
                     if (maintenanceLevel > 7) {
                         isMaintenancePause = true;
                         maintenanceLevel = 1;
@@ -164,15 +173,14 @@ async function fetchWinGoData() {
 
             if (nextPeriod !== lastSentPeriod) {
 
-                // Wait 3 Periods after 2 Level Loss
                 if (skipPeriodsRemaining > 0) {
                     skipPeriodsRemaining--;
-                    console.log(`[WAITING PATTERN] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
+                    console.log(`[PATTERN MATCH WAIT] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
                     lastSentPeriod = nextPeriod;
                     return;
                 }
 
-                let pred = advanced40PatternEngine(list);
+                let pred = deep50PagePatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -205,5 +213,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo King Prediction 40+ Pattern Engine Active...");
+console.log("WinGo King Prediction 50-Page History Deep Engine Active...");
 setInterval(fetchWinGoData, 8000);
