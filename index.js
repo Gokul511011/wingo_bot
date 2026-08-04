@@ -32,8 +32,6 @@ let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
 
-let skipPeriodsRemaining = 0;
-
 const levelAmounts = {
     1: "₹10",
     2: "₹30",
@@ -44,20 +42,18 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Smart Pattern Sequence + RNG Hybrid Prediction Engine
+// 🎯 Fast Pattern Sequence + RNG Hybrid Prediction Engine
 function hybridRNGPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // Current Last 5 Trend (e.g., BSBSB)
         let currentPattern = allResults.slice(0, 5).join("");
 
         let matchB = 0;
         let matchS = 0;
         let matchedNumbers = [];
 
-        // Historical Pattern Match (e.g. BSBSB -> What comes next?)
         for (let i = 1; i < allResults.length - 5; i++) {
             let pastPattern = allResults.slice(i, i + 5).join("");
             if (currentPattern === pastPattern) {
@@ -72,19 +68,16 @@ function hybridRNGPatternEngine(history) {
 
         let predResult = "BIG";
 
-        // If direct match found in history
         if (matchS > matchB) {
             predResult = "SMALL";
         } else if (matchB > matchS) {
             predResult = "BIG";
         } else {
-            // Pseudo-RNG Seed Balancing (When trend is confused/50-50)
             let periodSeed = allNumbers.slice(0, 5).reduce((a, b) => a + b, 0);
             let rngFactor = (periodSeed * 13 + 7) % 100;
             predResult = rngFactor >= 50 ? "BIG" : "SMALL";
         }
 
-        // Exact High Precision Number Extraction
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let freqMap = {};
 
@@ -92,7 +85,6 @@ function hybridRNGPatternEngine(history) {
             freqMap[n] = (freqMap[n] || 0) + 1;
         });
 
-        // Fallback to recent hot numbers if no exact history match
         if (Object.keys(freqMap).length === 0) {
             allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
                 freqMap[n] = (freqMap[n] || 0) + 1;
@@ -114,11 +106,10 @@ function hybridRNGPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const target50Url = `${TARGET_URL}?pageSize=500&pageNo=1`;
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(target50Url);
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
         
         const response = await axios.get(scraperUrl, { 
-            timeout: 25000,
+            timeout: 15000,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
@@ -150,10 +141,6 @@ async function fetchWinGoData() {
                     maintenanceLevel++;
                     cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
 
-                    if (maintenanceLevel === 3) {
-                        skipPeriodsRemaining = 3;
-                    }
-
                     if (maintenanceLevel > 7) {
                         maintenanceLevel = 1;
                     }
@@ -161,14 +148,6 @@ async function fetchWinGoData() {
             }
 
             if (nextPeriod !== lastSentPeriod) {
-
-                if (skipPeriodsRemaining > 0) {
-                    skipPeriodsRemaining--;
-                    console.log(`[RNG PATTERN WAIT] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
-                    lastSentPeriod = nextPeriod;
-                    return;
-                }
-
                 let pred = hybridRNGPatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
@@ -202,5 +181,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Hybrid RNG Pattern Engine Active...");
-setInterval(fetchWinGoData, 8000);
+console.log("WinGo Continuous Fast Engine Active...");
+setInterval(fetchWinGoData, 5000);
