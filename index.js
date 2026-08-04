@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo Dynamic Anti-Loss & Double Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 10-Sequence Pattern Analyzer Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -27,7 +27,6 @@ let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
 
-// Lock Tracking Variables for Loss Patterns
 let streakLockCount = 0;
 let lockedPrediction = null;
 
@@ -41,52 +40,70 @@ const levelAmounts = {
     7: "₹7290"
 };
 
+// 🎯 LAST 10 SEQUENCE ANALYZER ENGINE
+function analyzeLast10Sequence(results10) {
+    // results10 is array of 10 items e.g., ["B", "B", "S", "S", "B", "S", ...]
+    
+    // 1. Dragon Detection (Continuous 3+ of same)
+    let dragonCount = 1;
+    for (let i = 0; i < results10.length - 1; i++) {
+        if (results10[i] === results10[i + 1]) dragonCount++;
+        else break;
+    }
+    if (dragonCount >= 3) {
+        return { mode: "DRAGON", next: results10[0] === "B" ? "BIG" : "SMALL" };
+    }
+
+    // 2. Zig-Zag Detection (Alternate B-S-B-S in last 4-6)
+    let isZigZag = true;
+    for (let i = 0; i < 4; i++) {
+        if (results10[i] === results10[i + 1]) {
+            isZigZag = false;
+            break;
+        }
+    }
+    if (isZigZag) {
+        // Reverse last outcome for Zig-Zag
+        return { mode: "ZIGZAG", next: results10[0] === "B" ? "SMALL" : "BIG" };
+    }
+
+    // 3. Double Pattern Detection (BB-SS-BB or SS-BB-SS)
+    if (results10[0] === results10[1] && results10[2] === results10[3] && results10[0] !== results10[2]) {
+        // If pair is complete (2 of same), switch to opposite pair; else complete current pair
+        let doubleNext = results10[0] === "B" ? "SMALL" : "BIG";
+        return { mode: "DOUBLE", next: doubleNext };
+    }
+
+    // 4. Mirror Pattern Detection (Sequence in last 10 reverses/mirrors)
+    let firstHalf = results10.slice(0, 3).join("");
+    let secondHalf = results10.slice(3, 6).join("");
+    let invertedHalf = firstHalf.split("").map(ch => ch === "B" ? "S" : "B").join("");
+    if (secondHalf === invertedHalf) {
+        return { mode: "MIRROR", next: results10[0] === "B" ? "SMALL" : "BIG" };
+    }
+
+    return null; // Fallback if no explicit sequence pattern matched in last 10
+}
+
 // 🧠 HIGH-PRECISION PATTERN & NUMBER SEARCH ENGINE
 function advancedPatternEngine(history, currentConsecLosses) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // 🐉 1. DRAGON PATTERN OVERRIDE (Self-Decide Rule)
-        let dragonCount = 1;
-        for (let i = 0; i < allResults.length - 1; i++) {
-            if (allResults[i] === allResults[i + 1]) {
-                dragonCount++;
-            } else {
-                break;
-            }
-        }
+        // 1️⃣ ANALYZE LAST 10 SEQUENCE FIRST
+        let last10 = allResults.slice(0, 10);
+        let seqAnalysis = analyzeLast10Sequence(last10);
 
-        if (dragonCount >= 3) {
-            let dragonResult = allResults[0] === "B" ? "BIG" : "SMALL";
-            streakLockCount = 0; // Reset locked pattern for Dragon
+        if (seqAnalysis !== null) {
+            streakLockCount = 0;
             lockedPrediction = null;
-            return generateOutput(dragonResult, allNumbers);
+            return generateOutput(seqAnalysis.next, allNumbers);
         }
 
-        // 🪞 2. DOUBLE PATTERN SCAN (BB-SS or SS-BB)
-        // Checks if current flow is in BB-SS-BB pattern sequence
-        let isDoublePattern = (allResults[0] === allResults[1]) && 
-                              (allResults[2] === allResults[3]) && 
-                              (allResults[0] !== allResults[2]);
-
-        if (isDoublePattern && currentConsecLosses < 2) {
-            // Predict the continuation of Double pattern
-            // If last was second of the pair (e.g., B B S S [now target B]), switch to opposite
-            // If last was first of pair (e.g., B B S [now target S]), stay same
-            let doubleResult = "";
-            if (allResults[0] === allResults[1]) {
-                doubleResult = allResults[0] === "B" ? "SMALL" : "BIG"; // Switch pair
-            } else {
-                doubleResult = allResults[0] === "B" ? "BIG" : "SMALL"; // Continue pair
-            }
-            return generateOutput(doubleResult, allNumbers);
-        }
-
-        // 🔄 3. LOSS PATTERN LOCK LOGIC (2+ Losses -> 5 Times Continuation)
+        // 2️⃣ LOSS PATTERN LOCK LOGIC (2+ Losses -> 5 Times Continuation)
         if (currentConsecLosses >= 2) {
             if (streakLockCount === 0) {
-                // Determine loss pattern trend and stick for 5 rounds
                 lockedPrediction = allResults[0] === "B" ? "BIG" : "SMALL";
                 streakLockCount = 5;
             }
@@ -97,7 +114,7 @@ function advancedPatternEngine(history, currentConsecLosses) {
             return generateOutput(lockedPrediction, allNumbers);
         }
 
-        // 🔍 4. 50-PAGE HISTORICAL PATTERN SEARCH
+        // 3️⃣ 50-PAGE HISTORICAL MATCHING
         let scoreB = 0;
         let scoreS = 0;
 
@@ -111,14 +128,6 @@ function advancedPatternEngine(history, currentConsecLosses) {
                 let nextOutcome = allResults[i - 1];
                 if (nextOutcome === "B") scoreB += 4;
                 if (nextOutcome === "S") scoreS += 4;
-            }
-        }
-
-        if (!patternMatched || scoreB === scoreS) {
-            // ZIG-ZAG PATTERN (B-S-B-S)
-            if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2]) {
-                if (allResults[0] === "B") scoreS += 5;
-                else scoreB += 5;
             }
         }
 
@@ -257,5 +266,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Dynamic Anti-Loss & Double Pattern Engine Active...");
+console.log("WinGo 10-Sequence Pattern Analyzer Engine Active...");
 setInterval(fetchWinGoData, 12000);
