@@ -1,20 +1,112 @@
+const axios = require('axios');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+// Express Server for Render (Prevents application from exiting)
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => {
+    res.send('WinGo King Prediction Bot is Online!');
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+// Configuration
+const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+const CHANNEL_ID = '-1002486828817';
+const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
+
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+let lastSentPeriod = "";
+let lastPredictedResult = null;
+let lastPredictedPeriod = null;
+
+let totalWins = 0;
+let totalLosses = 0;
+let maintenanceLevel = 1;
+let consecutiveLosses = 0;
+let winStreak = 0;
+
+// Pause Timers
+let isCoolingDown = false;
+let isMaintenancePause = false;
+
+// Martingale Level Amounts
+const levelAmounts = {
+    1: "₹10",
+    2: "₹30",
+    3: "₹90",
+    4: "₹270",
+    5: "₹810",
+    6: "₹2430",
+    7: "₹7290"
+};
+
+// Advanced Deep Analysis Engine
+function advancedPredictionEngine(history) {
+    try {
+        let numbers = history.slice(0, 30).map(x => parseInt(x.number !== undefined ? x.number : x.result));
+        let results = numbers.map(n => n >= 5 ? "BIG" : "SMALL");
+
+        let bigCount = results.slice(0, 10).filter(r => r === "BIG").length;
+        let predResult = "BIG";
+
+        if (results[0] === results[1] && results[1] === results[2]) {
+            predResult = results[0]; 
+        } else if (results[0] !== results[1] && results[1] !== results[2] && results[2] !== results[3]) {
+            predResult = results[0] === "BIG" ? "SMALL" : "BIG";
+        } else {
+            predResult = bigCount <= 4 ? "BIG" : "SMALL";
+        }
+
+        let targetNumbers = [];
+        if (predResult === "BIG") {
+            let bigNums = [5, 6, 7, 8, 9];
+            let recentBigs = numbers.filter(n => n >= 5);
+            let freqMap = {};
+            recentBigs.forEach(n => freqMap[n] = (freqMap[n] || 0) + 1);
+            bigNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
+            targetNumbers = [bigNums[0], bigNums[1]];
+        } else {
+            let smallNums = [0, 1, 2, 3, 4];
+            let recentSmalls = numbers.filter(n => n < 5);
+            let freqMap = {};
+            recentSmalls.forEach(n => freqMap[n] = (freqMap[n] || 0) + 1);
+            smallNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
+            targetNumbers = [smallNums[0], smallNums[1]];
+        }
+
+        let numbersStr = targetNumbers.join(", ");
+        let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+
+        return { predResult, numbersStr, colorStr };
+    } catch (e) {
+        console.error("Prediction Engine Error:", e.message);
+        return { predResult: "BIG", numbersStr: "7, 8", colorStr: "🟢 GREEN" };
+    }
+}
+
 async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        // ScraperAPI render_js & premium headers add பண்ணியாச்சு
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL) + "&render_js=false";
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
         
         const response = await axios.get(scraperUrl, { 
             timeout: 25000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
-
+        
         let data = response.data;
-
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) {}
         }
@@ -28,10 +120,8 @@ async function fetchWinGoData() {
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
-
             let cheerMsgText = "";
 
-            // Win / Loss Verification
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
@@ -126,10 +216,13 @@ async function fetchWinGoData() {
                 lastSentPeriod = nextPeriod;
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
-                console.log("[SUCCESS] Update Sent: " + nextPeriod);
+                console.log("[SUCCESS] Message Sent: " + nextPeriod);
             }
         }
     } catch (error) {
         console.error('[SYNC ERROR]:', error.message);
     }
 }
+
+console.log("WinGo King Prediction Engine Active...");
+setInterval(fetchWinGoData, 8000);
