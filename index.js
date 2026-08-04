@@ -1,32 +1,27 @@
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const axios = require('axios');
-const { wrapper } = require('axios-cookiejar-support');
-const { CookieJar } = require('tough-cookie');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
-// Express Server for Render Health Check
+puppeteer.use(StealthPlugin());
+
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo 4-Digit Telegram Engine is Online!');
+    res.send('WinGo 4-Digit Stealth Engine is Live!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Telegram Credentials
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
-
-// Setup Cookie Session Client
-const jar = new CookieJar();
-const client = wrapper(axios.create({ jar }));
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
@@ -47,20 +42,18 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 STRICT 4-DIGIT PATTERN ENGINE (No 7-Digit Logic)
+// 🎯 STRICT 4-DIGIT PATTERN ENGINE
 function patternEngine4(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // 1. Scan Last 4-Digit Trend Sequence (e.g. BSBS / BSBB)
         let pattern4 = allResults.slice(0, 4).join("");
         let pattern3 = allResults.slice(0, 3).join("");
 
         let matchB = 0;
         let matchS = 0;
 
-        // Check history for exact 4-digit sequence matches
         for (let i = 1; i < allResults.length - 4; i++) {
             let pastPattern = allResults.slice(i, i + 4).join("");
             if (pattern4 === pastPattern) {
@@ -70,7 +63,6 @@ function patternEngine4(history) {
             }
         }
 
-        // Fallback to 3-digit if 4-digit pattern match is insufficient
         if (matchB === 0 && matchS === 0) {
             for (let i = 1; i < allResults.length - 3; i++) {
                 let pastPattern = allResults.slice(i, i + 3).join("");
@@ -91,7 +83,6 @@ function patternEngine4(history) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
-        // 2. Scan 2-Number Up/Down Match Strategy
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let num1 = allNumbers[0];
         let num2 = allNumbers[1];
@@ -126,31 +117,41 @@ function patternEngine4(history) {
 
         return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
-        console.error("4-Digit Engine Calculation Error:", e.message);
+        console.error("4-Digit Engine Error:", e.message);
         return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
 
-async function fetchWinGoData() {
-    try {
-        const response = await client.get(TARGET_URL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Origin': 'https://www.rajastake7.com',
-                'Referer': 'https://www.rajastake7.com/',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site'
-            },
-            timeout: 10000
-        });
+let browser = null;
 
-        let data = response.data;
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) {}
-        }
+async function getBrowserInstance() {
+    if (!browser) {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu'
+            ]
+        });
+    }
+    return browser;
+}
+
+async function fetchWinGoData() {
+    let page = null;
+    try {
+        const b = await getBrowserInstance();
+        page = await b.newPage();
+        
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+
+        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        const content = await page.evaluate(() => document.body.innerText);
+        let data = JSON.parse(content);
 
         let list = data?.data?.list || data?.list || data;
 
@@ -213,13 +214,21 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
+                console.log("[STEALTH SUCCESS] 4-Digit Message Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
+        console.error('[STEALTH ERROR]:', error.message);
+        if (browser) {
+            await browser.close().catch(() => {});
+            browser = null;
+        }
+    } finally {
+        if (page) {
+            await page.close().catch(() => {});
+        }
     }
 }
 
-console.log("WinGo Pure 4-Digit Engine Active...");
-setInterval(fetchWinGoData, 5000);
+console.log("WinGo Stealth Engine Active...");
+setInterval(fetchWinGoData, 10000);
