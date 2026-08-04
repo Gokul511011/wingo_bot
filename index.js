@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 app.get('/', (req, res) => {
-    res.send('WinGo King Prediction Engine is Online!');
+    res.send('WinGo 7-Sequence Pattern Engine is Online!');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
@@ -43,27 +43,45 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 Smart Hybrid RNG + Pattern Engine
-function hybridRNGPatternEngine(history) {
+// 🎯 Strict 7-Sequence Pattern Engine based on 500 Historical Results
+function patternEngine7(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let currentPattern = allResults.slice(0, 5).join("");
+        // Take last 7 trend (e.g., BSBSBBS)
+        let pattern7 = allResults.slice(0, 7).join("");
+        let pattern6 = allResults.slice(0, 6).join("");
 
         let matchB = 0;
         let matchS = 0;
         let matchedNumbers = [];
 
-        for (let i = 1; i < allResults.length - 5; i++) {
-            let pastPattern = allResults.slice(i, i + 5).join("");
-            if (currentPattern === pastPattern) {
+        // Primary Match: 7-Sequence Historical Scan
+        for (let i = 1; i < allResults.length - 7; i++) {
+            let pastPattern = allResults.slice(i, i + 7).join("");
+            if (pattern7 === pastPattern) {
                 let nextResult = allResults[i - 1];
                 let nextNum = allNumbers[i - 1];
 
                 if (nextResult === "B") matchB++;
                 if (nextResult === "S") matchS++;
                 matchedNumbers.push(nextNum);
+            }
+        }
+
+        // Secondary Match: Fallback to 6-Sequence if 7-Sequence match count is 0
+        if (matchB === 0 && matchS === 0) {
+            for (let i = 1; i < allResults.length - 6; i++) {
+                let pastPattern = allResults.slice(i, i + 6).join("");
+                if (pattern6 === pastPattern) {
+                    let nextResult = allResults[i - 1];
+                    let nextNum = allNumbers[i - 1];
+
+                    if (nextResult === "B") matchB++;
+                    if (nextResult === "S") matchS++;
+                    matchedNumbers.push(nextNum);
+                }
             }
         }
 
@@ -74,9 +92,8 @@ function hybridRNGPatternEngine(history) {
         } else if (matchB > matchS) {
             predResult = "BIG";
         } else {
-            let periodSeed = allNumbers.slice(0, 5).reduce((a, b) => a + b, 0);
-            let rngFactor = (periodSeed * 13 + 7) % 100;
-            predResult = rngFactor >= 50 ? "BIG" : "SMALL";
+            // Fallback to recent continuation trend if no pattern matches
+            predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
@@ -86,6 +103,7 @@ function hybridRNGPatternEngine(history) {
             freqMap[n] = (freqMap[n] || 0) + 1;
         });
 
+        // If no past pattern numbers matched, take hot numbers from last 15 draws
         if (Object.keys(freqMap).length === 0) {
             allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
                 freqMap[n] = (freqMap[n] || 0) + 1;
@@ -100,14 +118,15 @@ function hybridRNGPatternEngine(history) {
 
         return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
-        console.error("Hybrid RNG Engine Error:", e.message);
+        console.error("7-Pattern Engine Error:", e.message);
         return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        const target50Url = `${TARGET_URL}?pageSize=500&pageNo=1`;
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(target50Url);
         
         const response = await axios.get(scraperUrl, { 
             timeout: 15000,
@@ -133,7 +152,6 @@ async function fetchWinGoData() {
             let cheerMsgText = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
-                // Check if Exact Number Hit (Jackpot)
                 let isNumberHit = lastPredictedNumbers.includes(actualNum);
 
                 if (lastPredictedResult === actualResult) {
@@ -157,7 +175,7 @@ async function fetchWinGoData() {
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                let pred = hybridRNGPatternEngine(list);
+                let pred = patternEngine7(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -191,5 +209,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Jackpot Engine Active...");
+console.log("WinGo 7-Sequence Pattern Engine Active...");
 setInterval(fetchWinGoData, 5000);
