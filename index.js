@@ -18,6 +18,7 @@ app.listen(PORT, '0.0.0.0', () => {
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
+const MAIN_SITE_URL = 'https://www.rajastake7.com/';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -149,20 +150,15 @@ async function fetchWinGoData() {
         
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
 
-        await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        // Step 1: Visit main site to establish valid Cloudflare session
+        await page.goto(MAIN_SITE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await new Promise(r => setTimeout(r, 3000));
 
-        let content = await page.evaluate(() => document.body.innerText || document.body.textContent);
-
-        // Safe JSON extraction logic
-        let jsonStart = content.indexOf('{');
-        let jsonEnd = content.lastIndexOf('}');
-
-        if (jsonStart === -1 || jsonEnd === -1) {
-            throw new Error("No valid JSON structure found in page content");
-        }
-
-        let cleanJsonString = content.substring(jsonStart, jsonEnd + 1);
-        let data = JSON.parse(cleanJsonString);
+        // Step 2: Fetch JSON directly from inside browser context
+        let data = await page.evaluate(async (apiUrl) => {
+            let res = await fetch(apiUrl);
+            return await res.json();
+        }, TARGET_URL);
 
         let list = data?.data?.list || data?.list || data;
 
