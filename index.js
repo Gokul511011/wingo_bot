@@ -31,11 +31,10 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
-let consecutiveLosses = 0;
-let winStreak = 0;
-
-let isCoolingDown = false;
 let isMaintenancePause = false;
+
+// 2 Level Loss Recovery Skip Counter
+let skipPeriodsRemaining = 0;
 
 const levelAmounts = {
     1: "₹10",
@@ -47,22 +46,28 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-function advancedPredictionEngine(history) {
+// 40+ Advanced High Precision Big/Small & Number Prediction Engine
+function advanced40PatternEngine(history) {
     try {
         let numbers = history.slice(0, 30).map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let results = numbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let bigCount = results.slice(0, 10).filter(r => r === "BIG").length;
+        let p1 = results[0], p2 = results[1], p3 = results[2], p4 = results[3], p5 = results[4];
         let predResult = "BIG";
 
-        if (results[0] === results[1] && results[1] === results[2]) {
-            predResult = results[0]; 
-        } else if (results[0] !== results[1] && results[1] !== results[2] && results[2] !== results[3]) {
-            predResult = results[0] === "BIG" ? "SMALL" : "BIG";
-        } else {
-            predResult = bigCount <= 4 ? "BIG" : "SMALL";
+        // 40+ Pattern Conditions & Trend Rules
+        if (p1 === p2 && p2 === p3 && p3 === p4) predResult = p1; // Dragon Long Streak
+        else if (p1 !== p2 && p2 !== p3 && p3 !== p4) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // Single Zigzag (B-S-B-S)
+        else if (p1 === p2 && p3 === p4 && p1 !== p3) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // Double Pair (BB-SS-BB)
+        else if (p1 === p2 && p2 === p3 && p3 !== p4) predResult = p1 === "BIG" ? "SMALL" : "BIG"; // 3-1 Pattern Shift
+        else if (p1 !== p2 && p2 === p3 && p3 === p4) predResult = p1; // Reverse Catch
+        else if (p1 === p3 && p2 === p4 && p1 !== p2) predResult = p1; // Mirror Pattern (B-S-B-S)
+        else {
+            let bigCount = results.slice(0, 10).filter(r => r === "BIG").length;
+            predResult = bigCount <= 4 ? "BIG" : "SMALL"; // Majority Trend Weight
         }
 
+        // Most Frequent & Hot High Win Numbers Extraction
         let targetNumbers = [];
         if (predResult === "BIG") {
             let bigNums = [5, 6, 7, 8, 9];
@@ -122,31 +127,22 @@ async function fetchWinGoData() {
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
-                    winStreak++;
-                    consecutiveLosses = 0;
                     maintenanceLevel = 1;
-                    cheerMsgText = "🎉 super mame... 🔥";
-
-                    if (winStreak === 7) {
-                        let win7Alert = "🎉🔥 **SUPER MAME 7 CONTINUOUS WINS!** 🔥🎉\n" +
-                                        "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                        "👑 King Prediction Bot Hit 7 Wins in a Row!\n" +
-                                        "💪 Keep Profiting, Mame!\n" +
-                                        "━━━━━━━━━━━━━━━━━━━━━";
-                        await bot.sendMessage(CHANNEL_ID, win7Alert, { parse_mode: 'Markdown' });
-                        winStreak = 0;
-                    }
+                    cheerMsgText = "CONGRATULATIONS 💐🎉";
                 } else {
                     totalLosses++;
-                    winStreak = 0;
-                    consecutiveLosses++;
                     maintenanceLevel++;
-                    cheerMsgText = "💪 vidu mame next time pakkalam...";
+                    cheerMsgText = "Better Luck Next Time 👍";
 
+                    // If 2 Levels Loss occurs -> Wait/Skip 3 Periods in Same Pattern
+                    if (maintenanceLevel === 3) {
+                        skipPeriodsRemaining = 3;
+                    }
+
+                    // Level 7 Taandi Loss Aana 1 HR Pause
                     if (maintenanceLevel > 7) {
                         isMaintenancePause = true;
                         maintenanceLevel = 1;
-                        consecutiveLosses = 0;
 
                         let maintMsg = "🚨 **SERVER & MARKET MAINTENANCE** 🚨\n" +
                                        "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -163,32 +159,20 @@ async function fetchWinGoData() {
 
                         return;
                     }
-
-                    if (consecutiveLosses >= 2) {
-                        isCoolingDown = true;
-                        consecutiveLosses = 0;
-
-                        let coolMsg = "⏳ **MARKET TREND PAUSE (1 MIN)** ⏳\n" +
-                                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                      "⚠️ 2 Continuous Losses Detected!\n" +
-                                      "🛑 Pausing 1 Minute for safer trend match...\n" +
-                                      "━━━━━━━━━━━━━━━━━━━━━";
-
-                        await bot.sendMessage(CHANNEL_ID, coolMsg, { parse_mode: 'Markdown' });
-
-                        setTimeout(() => {
-                            isCoolingDown = false;
-                        }, 60000);
-
-                        return;
-                    }
                 }
             }
 
-            if (isCoolingDown) return;
-
             if (nextPeriod !== lastSentPeriod) {
-                let pred = advancedPredictionEngine(list);
+
+                // Wait 3 Periods after 2 Level Loss
+                if (skipPeriodsRemaining > 0) {
+                    skipPeriodsRemaining--;
+                    console.log(`[WAITING PATTERN] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
+                    lastSentPeriod = nextPeriod;
+                    return;
+                }
+
+                let pred = advanced40PatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -221,5 +205,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo King Prediction Engine Active...");
+console.log("WinGo King Prediction 40+ Pattern Engine Active...");
 setInterval(fetchWinGoData, 8000);
