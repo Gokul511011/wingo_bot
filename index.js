@@ -17,7 +17,6 @@ app.listen(PORT, '0.0.0.0', () => {
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = '792cc6afea63006ca27f3481bf1c1ef0';
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -128,13 +127,15 @@ function patternEngine4(history) {
 
 async function fetchWinGoData() {
     try {
-        // Correct Standard ScraperAPI Request Format
-        const response = await axios.get('http://api.scraperapi.com', {
-            params: {
-                api_key: SCRAPER_API_KEY,
-                url: TARGET_URL
-            },
-            timeout: 20000
+        // Multi-Bypass Relay
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL + '?pageSize=50&pageNo=1')}`;
+        
+        const response = await axios.get(proxyUrl, { 
+            timeout: 15000,
+            headers: {
+                'Accept': 'application/json, text/plain, */*',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            }
         });
         
         let data = response.data;
@@ -211,6 +212,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Engine Active...");
-// Delay interval set to 10s to prevent Rate-Limits
-setInterval(fetchWinGoData, 10000);
+console.log("WinGo Proxy Bypass Active...");
+setInterval(fetchWinGoData, 6000);
