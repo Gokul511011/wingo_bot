@@ -2,10 +2,10 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render
+// Express Keep-Alive Server for Render (24/7 Background Run)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 4-Digit Scraper Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 40+ Pattern Ultra Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -25,9 +25,6 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
-let consecutiveLosses = 0;
-
-let isCoolingDown = false;
 let isMaintenancePause = false;
 
 const levelAmounts = {
@@ -40,53 +37,90 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 STRICT 4-DIGIT PATTERN ENGINE
-function patternEngine4(history) {
+// 🧠 40+ PATTERN ENGINE (Dragon, Zig-Zag, Inverted, Mirror & High-Precision Numbers)
+function advancedPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let pattern4 = allResults.slice(0, 4).join("");
-        let pattern3 = allResults.slice(0, 3).join("");
+        let predResult = null;
 
-        let matchB = 0;
-        let matchS = 0;
-
-        for (let i = 1; i < allResults.length - 4; i++) {
-            let pastPattern = allResults.slice(i, i + 4).join("");
-            if (pattern4 === pastPattern) {
-                let nextResult = allResults[i - 1];
-                if (nextResult === "B") matchB++;
-                if (nextResult === "S") matchS++;
+        // 🐉 1. DRAGON PATTERN CHECK (Continuous 4+ BIG or SMALL)
+        let dragonCount = 1;
+        for (let i = 0; i < allResults.length - 1; i++) {
+            if (allResults[i] === allResults[i + 1]) {
+                dragonCount++;
+            } else {
+                break;
             }
         }
-
-        if (matchB === 0 && matchS === 0) {
-            for (let i = 1; i < allResults.length - 3; i++) {
-                let pastPattern = allResults.slice(i, i + 3).join("");
-                if (pattern3 === pastPattern) {
-                    let nextResult = allResults[i - 1];
-                    if (nextResult === "B") matchB++;
-                    if (nextResult === "S") matchS++;
-                }
-            }
-        }
-
-        let predResult = "BIG";
-        if (matchS > matchB) {
-            predResult = "SMALL";
-        } else if (matchB > matchS) {
-            predResult = "BIG";
-        } else {
+        if (dragonCount >= 4) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
 
+        // ⚡ 2. ZIG-ZAG PATTERN CHECK (Alternative B-S-B-S Pattern)
+        if (!predResult) {
+            let isZigZag = true;
+            for (let i = 0; i < 3; i++) {
+                if (allResults[i] === allResults[i + 1]) {
+                    isZigZag = false;
+                    break;
+                }
+            }
+            if (isZigZag) {
+                predResult = allResults[0] === "B" ? "SMALL" : "BIG";
+            }
+        }
+
+        // 🔍 3. 40+ MULTI-PATTERN SCANNING (Direct & Inverted/Mirror Matching)
+        if (!predResult) {
+            let matchB = 0;
+            let matchS = 0;
+
+            // Scan pattern depths from length 6 down to 3 (covers 40+ combinations)
+            for (let depth = 6; depth >= 3; depth--) {
+                let currentPattern = allResults.slice(0, depth).join("");
+                let invertedPattern = currentPattern.split("").map(ch => ch === "B" ? "S" : "B").join("");
+
+                for (let i = 1; i < allResults.length - depth; i++) {
+                    let pastPattern = allResults.slice(i, i + depth).join("");
+                    
+                    // Direct Match
+                    if (currentPattern === pastPattern) {
+                        let nextResult = allResults[i - 1];
+                        if (nextResult === "B") matchB += depth;
+                        if (nextResult === "S") matchS += depth;
+                    }
+                    
+                    // Inverted/Opposite Mirror Match
+                    if (invertedPattern === pastPattern) {
+                        let nextResult = allResults[i - 1];
+                        let mirrorNext = nextResult === "B" ? "S" : "B";
+                        if (mirrorNext === "B") matchB += depth;
+                        if (mirrorNext === "S") matchS += depth;
+                    }
+                }
+                
+                if (matchB > 0 || matchS > 0) break;
+            }
+
+            if (matchS > matchB) {
+                predResult = "SMALL";
+            } else if (matchB > matchS) {
+                predResult = "BIG";
+            } else {
+                predResult = allResults[0] === "B" ? "BIG" : "SMALL";
+            }
+        }
+
+        // 🎯 EXACT COLOR & NUMBER MATCHING (BIG = 🟢 GREEN [5-9] | SMALL = 🔴 RED [0-4])
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let num1 = allNumbers[0];
         let num2 = allNumbers[1];
 
         let numFreqMap = {};
 
+        // Frequency mapping over past history for 2-number target precision
         for (let i = 1; i < allNumbers.length - 2; i++) {
             if (allNumbers[i] === num1 && allNumbers[i + 1] === num2) {
                 let numAbove = allNumbers[i - 1];
@@ -102,7 +136,7 @@ function patternEngine4(history) {
         }
 
         if (Object.keys(numFreqMap).length === 0) {
-            allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
+            allNumbers.slice(0, 20).filter(n => candidateNums.includes(n)).forEach(n => {
                 numFreqMap[n] = (numFreqMap[n] || 0) + 1;
             });
         }
@@ -115,7 +149,7 @@ function patternEngine4(history) {
 
         return { predResult, targetNumbers, numbersStr, colorStr };
     } catch (e) {
-        console.error("4-Digit Engine Error:", e.message);
+        console.error("Pattern Engine Error:", e.message);
         return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
@@ -124,7 +158,6 @@ async function fetchWinGoData() {
     if (isMaintenancePause) return;
 
     try {
-        // Fast JSON fetch without render parameter
         const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
         
         const response = await axios.get(scraperUrl, { timeout: 15000 });
@@ -150,24 +183,21 @@ async function fetchWinGoData() {
 
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
-                    consecutiveLosses = 0;
                     maintenanceLevel = 1;
 
                     if (isNumberHit) {
-                        cheerMsgText = "💥 **WINNER JACKPOT** 💥\nCONGRATULATIONS 💐🎉";
+                        cheerMsgText = "💥 **WINNER JACKPOT (EXACT NUMBER HIT)** 💥\nCONGRATULATIONS 💐🎉";
                     } else {
                         cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
                     }
                 } else {
                     totalLosses++;
-                    consecutiveLosses++;
                     maintenanceLevel++;
                     cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
 
                     if (maintenanceLevel > 7) {
                         isMaintenancePause = true;
                         maintenanceLevel = 1;
-                        consecutiveLosses = 0;
 
                         let maintMsg = "🚨 **SERVER & MARKET MAINTENANCE** 🚨\n" +
                                        "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -185,33 +215,11 @@ async function fetchWinGoData() {
 
                         return;
                     }
-
-                    if (consecutiveLosses >= 2) {
-                        isCoolingDown = true;
-                        consecutiveLosses = 0;
-
-                        let coolMsg = "⏳ **MARKET TREND PAUSE (1 MIN)** ⏳\n" +
-                                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                      "⚠️ 2 Continuous Losses Detected!\n" +
-                                      "🛑 Pausing 1 Minute for safer trend match...\n" +
-                                      "━━━━━━━━━━━━━━━━━━━━━";
-
-                        await bot.sendMessage(CHANNEL_ID, coolMsg, { parse_mode: 'Markdown' });
-
-                        setTimeout(() => {
-                            isCoolingDown = false;
-                            console.log("[SYSTEM]: 1 Min Cooldown Completed.");
-                        }, 60000);
-
-                        return;
-                    }
                 }
             }
 
-            if (isCoolingDown) return;
-
             if (nextPeriod !== lastSentPeriod) {
-                let pred = patternEngine4(list);
+                let pred = advancedPatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -237,7 +245,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SCRAPER SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Ultra Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -245,5 +253,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo ScraperAPI 4-Digit Bot Active...");
+console.log("WinGo ScraperAPI 40+ Pattern Bot Active...");
 setInterval(fetchWinGoData, 15000);
