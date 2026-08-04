@@ -31,7 +31,6 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
-let isMaintenancePause = false;
 
 let skipPeriodsRemaining = 0;
 
@@ -51,19 +50,17 @@ function deep50PagePatternEngine(history) {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        // Extract Current Latest 5 Pattern Sequence
         let current5Pattern = allResults.slice(0, 5).join("-");
 
         let matchBigCount = 0;
         let matchSmallCount = 0;
         let matchedTargetNumbers = [];
 
-        // Scan full history to find where the last 5 sequence occurred before
         for (let i = 1; i < allResults.length - 5; i++) {
             let past5Pattern = allResults.slice(i, i + 5).join("-");
 
             if (current5Pattern === past5Pattern) {
-                let nextOutcome = allResults[i - 1]; // What came immediately after this pattern
+                let nextOutcome = allResults[i - 1];
                 let nextNum = allNumbers[i - 1];
 
                 if (nextOutcome === "BIG") matchBigCount++;
@@ -72,17 +69,14 @@ function deep50PagePatternEngine(history) {
             }
         }
 
-        // Determine Final Outcome based on Historical High Match
         let predResult = "BIG";
         if (matchSmallCount > matchBigCount) {
             predResult = "SMALL";
         } else if (matchBigCount === matchSmallCount) {
-            // Fallback: Recent top trend
             let recentBigs = allResults.slice(0, 10).filter(r => r === "BIG").length;
             predResult = recentBigs <= 4 ? "BIG" : "SMALL";
         }
 
-        // Filter High Precision Winning Numbers
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let freqMap = {};
 
@@ -90,7 +84,6 @@ function deep50PagePatternEngine(history) {
             freqMap[n] = (freqMap[n] || 0) + 1;
         });
 
-        // Sort by highest occurrence in history matches
         candidateNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
         let targetNumbers = [candidateNums[0], candidateNums[1]];
 
@@ -105,10 +98,7 @@ function deep50PagePatternEngine(history) {
 }
 
 async function fetchWinGoData() {
-    if (isMaintenancePause) return;
-
     try {
-        // Fetching 50 Pages worth of Data via ScraperAPI
         const target50Url = `${TARGET_URL}?pageSize=500&pageNo=1`;
         const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(target50Url);
         
@@ -139,34 +129,19 @@ async function fetchWinGoData() {
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
                     maintenanceLevel = 1;
-                    cheerMsgText = "CONGRATULATIONS 💐🎉";
+                    cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
                 } else {
                     totalLosses++;
                     maintenanceLevel++;
-                    cheerMsgText = "Better Luck Next Time 👍";
+                    cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
 
                     if (maintenanceLevel === 3) {
                         skipPeriodsRemaining = 3;
                     }
 
+                    // Level 7 தாண்டி போனாலும் Reset ஆகி தொடரும் (Stop ஆகாது)
                     if (maintenanceLevel > 7) {
-                        isMaintenancePause = true;
                         maintenanceLevel = 1;
-
-                        let maintMsg = "🚨 **SERVER & MARKET MAINTENANCE** 🚨\n" +
-                                       "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                       "⚠️ Market trend is unpredictable (L7 Exceeded).\n" +
-                                       "⏳ Bot is pausing for **1 HOUR** for safety.\n" +
-                                       "🔄 Auto-resetting to **Level 1** after maintenance.\n" +
-                                       "━━━━━━━━━━━━━━━━━━━━━";
-                        
-                        await bot.sendMessage(CHANNEL_ID, maintMsg, { parse_mode: 'Markdown' });
-
-                        setTimeout(() => {
-                            isMaintenancePause = false;
-                        }, 3600000);
-
-                        return;
                     }
                 }
             }
@@ -213,5 +188,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo King Prediction 50-Page History Deep Engine Active...");
+console.log("WinGo Continuous Non-Stop Engine Active...");
 setInterval(fetchWinGoData, 8000);
