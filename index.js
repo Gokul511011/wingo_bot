@@ -44,45 +44,60 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🔍 50-Page Historical Pattern Matching & Number Analysis Engine
-function deep50PagePatternEngine(history) {
+// 🎯 Smart Pattern Sequence + RNG Hybrid Prediction Engine
+function hybridRNGPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
+        let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let current5Pattern = allResults.slice(0, 5).join("-");
+        // Current Last 5 Trend (e.g., BSBSB)
+        let currentPattern = allResults.slice(0, 5).join("");
 
-        let matchBigCount = 0;
-        let matchSmallCount = 0;
-        let matchedTargetNumbers = [];
+        let matchB = 0;
+        let matchS = 0;
+        let matchedNumbers = [];
 
+        // Historical Pattern Match (e.g. BSBSB -> What comes next?)
         for (let i = 1; i < allResults.length - 5; i++) {
-            let past5Pattern = allResults.slice(i, i + 5).join("-");
-
-            if (current5Pattern === past5Pattern) {
-                let nextOutcome = allResults[i - 1];
+            let pastPattern = allResults.slice(i, i + 5).join("");
+            if (currentPattern === pastPattern) {
+                let nextResult = allResults[i - 1];
                 let nextNum = allNumbers[i - 1];
 
-                if (nextOutcome === "BIG") matchBigCount++;
-                if (nextOutcome === "SMALL") matchSmallCount++;
-                matchedTargetNumbers.push(nextNum);
+                if (nextResult === "B") matchB++;
+                if (nextResult === "S") matchS++;
+                matchedNumbers.push(nextNum);
             }
         }
 
         let predResult = "BIG";
-        if (matchSmallCount > matchBigCount) {
+
+        // If direct match found in history
+        if (matchS > matchB) {
             predResult = "SMALL";
-        } else if (matchBigCount === matchSmallCount) {
-            let recentBigs = allResults.slice(0, 10).filter(r => r === "BIG").length;
-            predResult = recentBigs <= 4 ? "BIG" : "SMALL";
+        } else if (matchB > matchS) {
+            predResult = "BIG";
+        } else {
+            // Pseudo-RNG Seed Balancing (When trend is confused/50-50)
+            let periodSeed = allNumbers.slice(0, 5).reduce((a, b) => a + b, 0);
+            let rngFactor = (periodSeed * 13 + 7) % 100;
+            predResult = rngFactor >= 50 ? "BIG" : "SMALL";
         }
 
+        // Exact High Precision Number Extraction
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let freqMap = {};
 
-        matchedTargetNumbers.filter(n => candidateNums.includes(n)).forEach(n => {
+        matchedNumbers.filter(n => candidateNums.includes(n)).forEach(n => {
             freqMap[n] = (freqMap[n] || 0) + 1;
         });
+
+        // Fallback to recent hot numbers if no exact history match
+        if (Object.keys(freqMap).length === 0) {
+            allNumbers.slice(0, 15).filter(n => candidateNums.includes(n)).forEach(n => {
+                freqMap[n] = (freqMap[n] || 0) + 1;
+            });
+        }
 
         candidateNums.sort((a, b) => (freqMap[b] || 0) - (freqMap[a] || 0));
         let targetNumbers = [candidateNums[0], candidateNums[1]];
@@ -92,7 +107,7 @@ function deep50PagePatternEngine(history) {
 
         return { predResult, numbersStr, colorStr };
     } catch (e) {
-        console.error("Deep Pattern Matching Error:", e.message);
+        console.error("Hybrid RNG Engine Error:", e.message);
         return { predResult: "BIG", numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
@@ -139,7 +154,6 @@ async function fetchWinGoData() {
                         skipPeriodsRemaining = 3;
                     }
 
-                    // Level 7 தாண்டி போனாலும் Reset ஆகி தொடரும் (Stop ஆகாது)
                     if (maintenanceLevel > 7) {
                         maintenanceLevel = 1;
                     }
@@ -150,12 +164,12 @@ async function fetchWinGoData() {
 
                 if (skipPeriodsRemaining > 0) {
                     skipPeriodsRemaining--;
-                    console.log(`[PATTERN MATCH WAIT] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
+                    console.log(`[RNG PATTERN WAIT] Skipping Period ${nextPeriod} (${skipPeriodsRemaining} left)`);
                     lastSentPeriod = nextPeriod;
                     return;
                 }
 
-                let pred = deep50PagePatternEngine(list);
+                let pred = hybridRNGPatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -188,5 +202,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo Continuous Non-Stop Engine Active...");
+console.log("WinGo Hybrid RNG Pattern Engine Active...");
 setInterval(fetchWinGoData, 8000);
