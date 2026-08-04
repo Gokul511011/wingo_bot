@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.get('/', (req, res) => res.send('WinGo Pro Engine Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo King Prediction Bot Active!'));
 app.listen(PORT, () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -14,6 +14,7 @@ const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json';
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
@@ -25,6 +26,7 @@ let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
 let consecutiveLosses = 0;
+let winStreak = 0; // Track Continuous Wins
 
 // Pause Timers
 let isCoolingDown = false; // 1 Min Pause
@@ -41,31 +43,30 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// Advanced Prediction Engine
+// Advanced Deep Analysis Engine
 function advancedPredictionEngine(history) {
     try {
         let numbers = history.slice(0, 30).map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let results = numbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
         let bigCount = results.slice(0, 10).filter(r => r === "BIG").length;
-        let smallCount = 10 - bigCount;
 
         let predResult = "BIG";
 
-        // Pattern 1: Dragon / Streak (3+ continuous same result)
+        // Strategy 1: Streak Continuation (Dragon Trend)
         if (results[0] === results[1] && results[1] === results[2]) {
             predResult = results[0]; 
         } 
-        // Pattern 2: Single Zig-Zag / Alternate Pattern (B-S-B-S)
+        // Strategy 2: Single Alternating Trend (B-S-B-S)
         else if (results[0] !== results[1] && results[1] !== results[2] && results[2] !== results[3]) {
             predResult = results[0] === "BIG" ? "SMALL" : "BIG";
         } 
-        // Pattern 3: Weighted Reversion
+        // Strategy 3: Weighted Reversion
         else {
             predResult = bigCount <= 4 ? "BIG" : "SMALL";
         }
 
-        // Smart 2-Number Selection Logic based on recent frequency
+        // Deep Number Frequency Analysis
         let targetNumbers = [];
         if (predResult === "BIG") {
             let bigNums = [5, 6, 7, 8, 9];
@@ -88,13 +89,12 @@ function advancedPredictionEngine(history) {
 
         return { predResult, numbersStr, colorStr };
     } catch (e) {
-        console.error("Prediction Logic Error:", e.message);
+        console.error("Prediction Engine Error:", e.message);
         return { predResult: "BIG", numbersStr: "7, 8", colorStr: "🟢 GREEN" };
     }
 }
 
 async function fetchWinGoData() {
-    // If in 1 Hour Maintenance Mode, skip processing
     if (isMaintenancePause) return;
 
     try {
@@ -117,18 +117,35 @@ async function fetchWinGoData() {
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
 
-            // Win / Loss Verification Logic
+            let cheerMsgText = "";
+
+            // Win / Loss Verification
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
+                    winStreak++;
                     consecutiveLosses = 0;
-                    maintenanceLevel = 1; // Reset to L1 on Win
+                    maintenanceLevel = 1; // Reset Level
+                    cheerMsgText = "🎉 super mame... 🔥";
+
+                    // 7 Continuous Wins Special Alert!
+                    if (winStreak === 7) {
+                        let win7Alert = "🎉🔥 **SUPER MAME 7 CONTINUOUS WINS!** 🔥🎉\n" +
+                                        "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                        "👑 King Prediction Bot Hit 7 Wins in a Row!\n" +
+                                        "💪 Keep Profiting, Mame!\n" +
+                                        "━━━━━━━━━━━━━━━━━━━━━";
+                        await bot.sendMessage(CHANNEL_ID, win7Alert, { parse_mode: 'Markdown' });
+                        winStreak = 0; // Reset after alert
+                    }
                 } else {
                     totalLosses++;
+                    winStreak = 0; // Reset Win Streak
                     consecutiveLosses++;
                     maintenanceLevel++;
+                    cheerMsgText = "💪 vidu mame next time pakkalam...";
 
-                    // Rule 1: Level > 7 Trigger Maintenance Mode (1 Hour Pause)
+                    // Rule: Level > 7 Maintenance Mode (1 Hour Pause)
                     if (maintenanceLevel > 7) {
                         isMaintenancePause = true;
                         maintenanceLevel = 1;
@@ -145,16 +162,16 @@ async function fetchWinGoData() {
 
                         setTimeout(() => {
                             isMaintenancePause = false;
-                            console.log("[SYSTEM]: 1 Hour Maintenance Pause Ended. Bot Resumed.");
-                        }, 3600000); // 1 Hour
+                            console.log("[SYSTEM]: 1 Hour Pause Completed.");
+                        }, 3600000);
 
                         return;
                     }
 
-                    // Rule 2: Continuous 2 Losses Trigger 1 Min Cooldown Pause
+                    // Rule: 2 Consecutive Losses (1 Min Cooldown Pause)
                     if (consecutiveLosses >= 2) {
                         isCoolingDown = true;
-                        consecutiveLosses = 0; // Reset counter for cooldown
+                        consecutiveLosses = 0;
 
                         let coolMsg = "⏳ **MARKET TREND PAUSE (1 MIN)** ⏳\n" +
                                       "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -166,15 +183,14 @@ async function fetchWinGoData() {
 
                         setTimeout(() => {
                             isCoolingDown = false;
-                            console.log("[SYSTEM]: 1 Min Cooldown Completed. Resuming.");
-                        }, 60000); // 60 Seconds
+                            console.log("[SYSTEM]: 1 Min Cooldown Completed.");
+                        }, 60000);
 
                         return;
                     }
                 }
             }
 
-            // If cooling down, skip sending next prediction
             if (isCoolingDown) return;
 
             if (nextPeriod !== lastSentPeriod) {
@@ -188,16 +204,22 @@ async function fetchWinGoData() {
                           "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                           "🎨 **COLOUR:** " + pred.colorStr + "\n" +
                           "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                          "🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
-                          "💔 **TOTAL LOSS:** **" + totalLosses + "**";
+                          "━━━━━━━━━━━━━━━━━━━━━\n";
+
+                if (cheerMsgText !== "") {
+                    msg += cheerMsgText + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+                }
+
+                msg += "\n🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
+                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n\n" +
+                       "🔗 **Register Link:**\n" + REGISTER_LINK;
 
                 await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
                 lastSentPeriod = nextPeriod;
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
-                console.log("[SUCCESS] Pro Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Update Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -205,5 +227,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo King Pro Bot Active...");
+console.log("WinGo King Prediction Active...");
 setInterval(fetchWinGoData, 8000);
