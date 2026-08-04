@@ -1,23 +1,17 @@
-const express = require('express');
+const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const express = require('express');
 
-puppeteer.use(StealthPlugin());
-
+// Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
+app.get('/', (req, res) => res.send('WinGo 4-Digit Scraper Engine Active!'));
+app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
-app.get('/', (req, res) => {
-    res.send('WinGo 4-Digit Stealth Engine is Live!');
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
+// Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
+const SCRAPER_API_KEY = 'f12c59abca9948a7cc85a14de5a93719';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -31,6 +25,10 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
+let consecutiveLosses = 0;
+
+let isCoolingDown = false;
+let isMaintenancePause = false;
 
 const levelAmounts = {
     1: "₹10",
@@ -123,36 +121,18 @@ function patternEngine4(history) {
 }
 
 async function fetchWinGoData() {
-    let browser = null;
+    if (isMaintenancePause) return;
+
     try {
-        browser = await puppeteer.launch({
-            headless: 'new',
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu',
-                '--window-size=1920,1080'
-            ]
-        });
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        
+        const response = await axios.get(scraperUrl, { timeout: 25000 });
+        let data = response.data;
 
-        const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-
-        // Go to API directly with networkidle2
-        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-
-        let content = await page.evaluate(() => document.body.innerText || document.body.textContent);
-
-        // Regex to extract valid JSON array/object cleanly
-        let jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            throw new Error("No JSON found in response");
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) {}
         }
 
-        let data = JSON.parse(jsonMatch[0]);
         let list = data?.data?.list || data?.list || data;
 
         if (Array.isArray(list) && list.length > 0) {
@@ -169,6 +149,7 @@ async function fetchWinGoData() {
 
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
+                    consecutiveLosses = 0;
                     maintenanceLevel = 1;
 
                     if (isNumberHit) {
@@ -178,14 +159,55 @@ async function fetchWinGoData() {
                     }
                 } else {
                     totalLosses++;
+                    consecutiveLosses++;
                     maintenanceLevel++;
                     cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
 
                     if (maintenanceLevel > 7) {
+                        isMaintenancePause = true;
                         maintenanceLevel = 1;
+                        consecutiveLosses = 0;
+
+                        let maintMsg = "🚨 **SERVER & MARKET MAINTENANCE** 🚨\n" +
+                                       "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                       "⚠️ Market trend is unpredictable (L7 Exceeded).\n" +
+                                       "⏳ Bot is pausing for **1 HOUR** for safety.\n" +
+                                       "🔄 Auto-resetting to **Level 1** after maintenance.\n" +
+                                       "━━━━━━━━━━━━━━━━━━━━━";
+                        
+                        await bot.sendMessage(CHANNEL_ID, maintMsg, { parse_mode: 'Markdown' });
+
+                        setTimeout(() => {
+                            isMaintenancePause = false;
+                            console.log("[SYSTEM]: 1 Hour Maintenance Pause Ended.");
+                        }, 3600000);
+
+                        return;
+                    }
+
+                    if (consecutiveLosses >= 2) {
+                        isCoolingDown = true;
+                        consecutiveLosses = 0;
+
+                        let coolMsg = "⏳ **MARKET TREND PAUSE (1 MIN)** ⏳\n" +
+                                      "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                      "⚠️ 2 Continuous Losses Detected!\n" +
+                                      "🛑 Pausing 1 Minute for safer trend match...\n" +
+                                      "━━━━━━━━━━━━━━━━━━━━━";
+
+                        await bot.sendMessage(CHANNEL_ID, coolMsg, { parse_mode: 'Markdown' });
+
+                        setTimeout(() => {
+                            isCoolingDown = false;
+                            console.log("[SYSTEM]: 1 Min Cooldown Completed.");
+                        }, 60000);
+
+                        return;
                     }
                 }
             }
+
+            if (isCoolingDown) return;
 
             if (nextPeriod !== lastSentPeriod) {
                 let pred = patternEngine4(list);
@@ -214,18 +236,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[STEALTH SUCCESS] Prediction Sent for Period: " + nextPeriod);
+                console.log("[SCRAPER SUCCESS] 4-Digit Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[STEALTH ERROR]:', error.message);
-    } finally {
-        if (browser) {
-            await browser.close().catch(() => {});
-        }
+        console.error('[SCRAPER ERROR]:', error.message);
     }
 }
 
-console.log("WinGo Stealth Engine Active...");
-// Run every 12 seconds to save RAM while fetching live periods
-setInterval(fetchWinGoData, 12000);
+console.log("WinGo ScraperAPI 4-Digit Bot Active...");
+setInterval(fetchWinGoData, 8000);
