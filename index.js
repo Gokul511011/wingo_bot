@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Deployment
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Advanced Profit & Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S High Precision Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -44,7 +44,6 @@ const levelData = {
     8: { name: "₹2187", val: 2187, winPayout: 4286.52 }
 };
 
-// Helper function to invert B <-> S
 function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
@@ -58,57 +57,41 @@ function deepHistoryPatternEngine(history) {
         let seq4 = allResults.slice(0, 4).join("");
         let predResult = "";
 
-        // 1. Direct Rule Overrides for BSBBS / SBSSB
+        // 1. User Direct Sequences
         if (seq5 === "BSBBS") {
             predResult = "BIG";
         } else if (seq5 === "SBSSB") {
             predResult = "SMALL";
         } 
-        // 2. Streaks Logic (3 in a row)
+        // 2. Streaks Logic (Long Dragon Detection)
         else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 3. Alternating Pattern Logic (B-S-B-S)
+        // 3. Alternating Logic (B-S-B-S)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Double Pattern Logic (B-B-S-S)
-        else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
-            predResult = allResults[0] === "B" ? "SMALL" : "BIG";
-        }
-        // 5. Advanced Historical Mirror Scanning across 1000 Results
+        // 4. Weighted Trend Analysis on History
         else {
             let scoreB = 0;
             let scoreS = 0;
 
             let mirrorSeq5 = invertPattern(seq5);
-            let mirrorSeq4 = invertPattern(seq4);
 
             for (let i = 1; i < allResults.length - 6; i++) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
-                let histSeq4 = allResults.slice(i, i + 4).join("");
                 let nextItem = allResults[i - 1];
 
-                // Check direct 5-match
-                if (histSeq5 === seq5) {
-                    if (nextItem === "B") scoreB += 2;
-                    if (nextItem === "S") scoreS += 2;
-                }
-                // Check mirror 5-match (Inverted match gives inverted result score)
-                if (histSeq5 === mirrorSeq5) {
-                    if (nextItem === "S") scoreB += 2; // Mirror S means Direct B
-                    if (nextItem === "B") scoreS += 2; // Mirror B means Direct S
-                }
+                // Give 3x weight for recent 50 turns
+                let weight = i < 50 ? 3 : 1;
 
-                // Check direct 4-match
-                if (histSeq4 === seq4) {
-                    if (nextItem === "B") scoreB += 1;
-                    if (nextItem === "S") scoreS += 1;
+                if (histSeq5 === seq5) {
+                    if (nextItem === "B") scoreB += (2 * weight);
+                    if (nextItem === "S") scoreS += (2 * weight);
                 }
-                // Check mirror 4-match
-                if (histSeq4 === mirrorSeq4) {
-                    if (nextItem === "S") scoreB += 1;
-                    if (nextItem === "B") scoreS += 1;
+                if (histSeq5 === mirrorSeq5) {
+                    if (nextItem === "S") scoreB += (2 * weight);
+                    if (nextItem === "B") scoreS += (2 * weight);
                 }
             }
 
@@ -117,18 +100,16 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // --- NUMBER & COLOR PREDICTION ENGINE ---
+        // --- HIGH ACCURACY NUMBER PREDICTION ---
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 1; i < allNumbers.length - 5; i++) {
-            let histSeq = allResults.slice(i, i + 4).join("");
-            if (histSeq === seq4 || histSeq === invertPattern(seq4)) {
-                let histNextNum = allNumbers[i - 1];
-                if (candidateNums.includes(histNextNum)) {
-                    numberFrequency[histNextNum] = (numberFrequency[histNextNum] || 0) + 1;
-                }
+        // Scan past 100 numbers for top frequency in target group
+        for (let i = 0; i < Math.min(100, allNumbers.length); i++) {
+            let num = allNumbers[i];
+            if (candidateNums.includes(num)) {
+                numberFrequency[num] = (numberFrequency[num] || 0) + 1;
             }
         }
 
@@ -187,7 +168,6 @@ async function fetchWinGoData() {
                     if (isResultHit) winParts.push(actualResult + " WIN");
                     if (isNumberHit) winParts.push(actualNum + " WIN");
                     if (isColorHit) winParts.push(actualColor + " WIN");
-                    if (isNumberHit) winParts.push("JACKPOT NUMBERS");
 
                     dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
 
