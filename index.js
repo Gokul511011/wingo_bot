@@ -121,33 +121,6 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-// Deep JSON Extractor
-function extractJsonFromResponse(data) {
-    if (typeof data === 'object' && data !== null) {
-        if (data.data?.list || data.list) return data;
-        if (data.content) return extractJsonFromResponse(data.content);
-    }
-    
-    if (typeof data === 'string') {
-        try {
-            return JSON.parse(data);
-        } catch (e) {
-            // Regex match for JSON array/object inside HTML/pre tags
-            const jsonMatch = data.match(/\{[\s\S]*"list"[\s\S]*\}/);
-            if (jsonMatch) {
-                try {
-                    return JSON.parse(jsonMatch[0]);
-                } catch (err) {}
-            }
-            let cleanStr = data.replace(/<[^>]*>?/gm, '').trim();
-            try {
-                return JSON.parse(cleanStr);
-            } catch (err) {}
-        }
-    }
-    return null;
-}
-
 let isFetching = false;
 
 async function fetchWinGoData() {
@@ -155,17 +128,43 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        console.log('[SYSTEM] Fetching data via ScrapingAnt Engine...');
+        console.log('[SYSTEM] Attempting Raw ScrapingAnt Request...');
         
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true`;
+        // return_page_source=false forces ScrapingAnt to return raw JSON response
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
 
-        const response = await axios.get(scraperUrl, { timeout: 30000 });
-        
-        let parsed = extractJsonFromResponse(response.data);
-        let list = parsed?.data?.list || parsed?.list || (Array.isArray(parsed) ? parsed : null);
+        let rawContent = null;
+
+        try {
+            const response = await axios.get(scraperUrl, { timeout: 15000 });
+            rawContent = response.data;
+        } catch (err) {
+            console.log('[FALLBACK] ScrapingAnt V2 direct call failed, trying alternative endpoint...');
+            // Backup direct axios fetch with dynamic user-agent
+            const directRes = await axios.get(TARGET_URL, {
+                timeout: 10000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                    'Accept': 'application/json, text/plain, */*',
+                    'Referer': 'https://www.rajastake7.com/'
+                }
+            });
+            rawContent = directRes.data;
+        }
+
+        if (typeof rawContent === 'string') {
+            try { 
+                rawContent = JSON.parse(rawContent); 
+            } catch (e) {
+                let cleanStr = rawContent.replace(/<[^>]*>?/gm, '').trim();
+                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
+            }
+        }
+
+        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] Raw output snippet:', String(JSON.stringify(response.data)).substring(0, 150));
+            console.log('[SYSTEM] No valid history array found, skipping cycle.');
             isFetching = false;
             return;
         }
@@ -283,5 +282,5 @@ async function fetchWinGoData() {
     }
 }
 
-// Interval set to 10s
+// Check every 10 seconds
 setInterval(fetchWinGoData, 10000);
