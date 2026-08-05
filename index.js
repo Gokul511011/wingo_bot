@@ -11,6 +11,7 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
+const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -127,28 +128,35 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        console.log('[SYSTEM] Fetching data directly...');
+        console.log('[SYSTEM] Fetching data via ScrapingAnt Browser Engine...');
         
-        // Direct Bypass Request using Custom Real-Browser Headers
-        const response = await axios.get(TARGET_URL, {
-            timeout: 8000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://www.rajastake7.com/',
-                'Origin': 'https://www.rajastake7.com',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site'
-            }
-        });
+        // ScrapingAnt V2 with browser=true to bypass Cloudflare 403
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true`;
 
-        let rawData = response.data;
-        let list = rawData?.data?.list || rawData?.list || (Array.isArray(rawData) ? rawData : null);
+        const response = await axios.get(scraperUrl, { timeout: 30000 });
+        
+        let rawContent = response.data;
+        
+        if (typeof rawContent === 'string') {
+            try { 
+                rawContent = JSON.parse(rawContent); 
+            } catch (e) {
+                let cleanStr = rawContent.replace(/<[^>]*>?/gm, '').trim();
+                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
+            }
+        } else if (rawContent.content && typeof rawContent.content === 'string') {
+            try {
+                rawContent = JSON.parse(rawContent.content);
+            } catch (e) {
+                let cleanStr = rawContent.content.replace(/<[^>]*>?/gm, '').trim();
+                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
+            }
+        }
+
+        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] No data received, retrying next cycle...');
+            console.log('[SYSTEM] Raw output parsing failed, retrying next loop...');
             isFetching = false;
             return;
         }
@@ -266,5 +274,5 @@ async function fetchWinGoData() {
     }
 }
 
-// 5 வினாடிக்கு ஒருமுறை டேட்டாவைச் சரிபார்க்கும்
-setInterval(fetchWinGoData, 5000);
+// Check every 10 seconds (gives ScrapingAnt enough time to render and release lock)
+setInterval(fetchWinGoData, 10000);
