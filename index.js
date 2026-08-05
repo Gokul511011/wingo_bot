@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Smart Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Unlimited Engine with 60-Prediction Summary Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -26,14 +26,14 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
-let consecLosses = 0;
 let maintenanceLevel = 1;
-let cooldownCounter = 0;
 let totalProfitLoss = 0;
 
-let prediction60History = [];
+let predictionCount = 0; // 60-Prediction Counter
+let maxLevelReached = 1; // Tracks highest level in the 60-run set
+let prediction60History = []; // Array to store last 60 results
 
-// 8-Level Bet Amounts under ₹2500 Limit
+// Unlimited Bet Level Math
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
@@ -45,17 +45,17 @@ const levelData = {
     8: { name: "₹1350", val: 1350 }
 };
 
-// Exact Color & Number Mapping Function
+function getBetVal(level) {
+    if (levelData[level]) return levelData[level].val;
+    return Math.pow(3, level - 1); // 8 லெவலுக்கு மேல போனாலும் தானாக கணக்கிடும்
+}
+
+// Exact Color & Number Mapping
 function getNumberColor(num) {
-    if ([2, 4, 6, 8].includes(num)) {
-        return "RED";
-    } else if ([1, 3, 7, 9].includes(num)) {
-        return "GREEN";
-    } else if (num === 0) {
-        return "RED / VIOLET";
-    } else if (num === 5) {
-        return "GREEN / VIOLET";
-    }
+    if ([2, 4, 6, 8].includes(num)) return "RED";
+    if ([1, 3, 7, 9].includes(num)) return "GREEN";
+    if (num === 0) return "RED / VIOLET";
+    if (num === 5) return "GREEN / VIOLET";
     return "RED";
 }
 
@@ -63,7 +63,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Advanced Trend Protection Engine
+// Pattern Analysis Engine
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -179,7 +179,7 @@ async function fetchWinGoData() {
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-        let actualColor = getNumberColor(actualNum); // துல்லியமான கலர் மேப்பிங்
+        let actualColor = getNumberColor(actualNum);
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
         
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -191,22 +191,27 @@ async function fetchWinGoData() {
             let isColorHit = actualColor.includes(lastPredictedColor);
 
             let currentLevelExecuted = maintenanceLevel;
-            let currentBetVal = levelData[currentLevelExecuted]?.val || 1;
+            let currentBetVal = getBetVal(currentLevelExecuted);
+
+            if (currentLevelExecuted > maxLevelReached) {
+                maxLevelReached = currentLevelExecuted;
+            }
+
+            predictionCount++;
 
             if (isResultHit) {
                 totalWins++;
-                consecLosses = 0;
 
                 let winAmount = currentBetVal * 0.98;
                 totalProfitLoss += winAmount;
 
-                if (isResultHit && isNumberHit && isColorHit) {
+                if (isNumberHit && isColorHit) {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " JACKPOT WINNERS** 🏆";
                 } 
-                else if (isResultHit && isNumberHit) {
+                else if (isNumberHit) {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
                 } 
-                else if (isResultHit && isColorHit) {
+                else if (isColorHit) {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " WINNER CONGRATULATIONS** 🏆";
                 } 
                 else {
@@ -218,62 +223,76 @@ async function fetchWinGoData() {
 
             } else {
                 totalLosses++;
-                consecLosses++;
-
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
+                dynamicStatusMsg = "💔 **LOSS: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
 
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-                maintenanceLevel++;
+                maintenanceLevel++; 
+            }
 
-                if (consecLosses >= 5) {
-                    cooldownCounter = 3;
-                    consecLosses = 0;
-                    maintenanceLevel = 1; 
-                    await bot.sendMessage(CHANNEL_ID, "⚠️ **HIGH RISK TREND DETECTED!**\n🛑 Bot is taking a break for 3 predictions to analyze new trend pattern.", { parse_mode: 'Markdown' });
-                }
+            // 60 Predictions முடிவடைந்ததும் Report அனுப்பும் Logic
+            if (predictionCount >= 60) {
+                let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+                
+                let summaryMsg = "📊 **60 PREDICTIONS TEST SUMMARY REPORT** 📊\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "🎯 **TOTAL PREDICTIONS:** 60\n" +
+                                 "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
+                                 "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
+                                 "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
 
-                if (maintenanceLevel > 8) maintenanceLevel = 1;
+                let recent10 = prediction60History.slice(0, 10);
+                recent10.forEach(item => {
+                    let icon = item.status === "WIN" ? "✅" : "❌";
+                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
+                });
+
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Resetting stats for the next 60 rounds!**";
+
+                await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+
+                // Stats Reset for Next 60 Batch
+                predictionCount = 0;
+                totalWins = 0;
+                totalLosses = 0;
+                totalProfitLoss = 0;
+                maxLevelReached = 1;
+                prediction60History = [];
             }
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            if (cooldownCounter > 0) {
-                cooldownCounter--;
-                console.log(`[PAUSE] Skipping high-risk trend. Remaining: ${cooldownCounter}`);
-                lastSentPeriod = nextPeriod;
-                isFetching = false;
-                return;
-            }
-
             let pred = deepHistoryPatternEngine(list);
             
             let activeLevel = maintenanceLevel;
-            let nextLevel = (activeLevel >= 8) ? 1 : activeLevel + 1;
+            let nextLevel = activeLevel + 1;
             
-            let currentLevelInfo = levelData[activeLevel] || levelData[1];
-            let nextLevelInfo = levelData[nextLevel] || levelData[1];
+            let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
+            let nextBetName = levelData[nextLevel]?.name || ("₹" + getBetVal(nextLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S** ⚡\n" +
+                      "⚡ **WinGo 30S (60-Run Test)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                       "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                      "💰 **BET AMOUNT:** **" + currentLevelInfo.name + " (Level " + activeLevel + ")**\n" +
-                      "👉 **IF LOSS NEXT BET:** **" + nextLevelInfo.name + " (Level " + nextLevel + ")**\n" +
+                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "👉 **IF LOSS NEXT BET:** **" + nextBetName + " (Level " + nextLevel + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
                 msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
             }
 
-            msg += "🏆 **WINS:** " + totalWins + "\n" +
-                   "💔 **LOSSES:** " + totalLosses + "\n" +
+            msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
+                   "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
@@ -285,7 +304,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
+            console.log("[60-TEST RUN] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
