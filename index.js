@@ -34,14 +34,14 @@ let prediction60History = [];
 
 // 8 Level Bet Plan starting from ₹1 (3x Multiplier)
 const levelData = {
-    1: { name: "₹1", val: 1, winPayout: 1.96 },
-    2: { name: "₹3", val: 3, winPayout: 5.88 },
-    3: { name: "₹9", val: 9, winPayout: 17.64 },
-    4: { name: "₹27", val: 27, winPayout: 52.92 },
-    5: { name: "₹81", val: 81, winPayout: 158.76 },
-    6: { name: "₹243", val: 243, winPayout: 476.28 },
-    7: { name: "₹729", val: 729, winPayout: 1428.84 },
-    8: { name: "₹2187", val: 2187, winPayout: 4286.52 }
+    1: { name: "₹1", val: 1 },
+    2: { name: "₹3", val: 3 },
+    3: { name: "₹9", val: 9 },
+    4: { name: "₹27", val: 27 },
+    5: { name: "₹81", val: 81 },
+    6: { name: "₹243", val: 243 },
+    7: { name: "₹729", val: 729 },
+    8: { name: "₹2187", val: 2187 }
 };
 
 function invertPattern(str) {
@@ -54,35 +54,29 @@ function deepHistoryPatternEngine(history) {
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
         let seq5 = allResults.slice(0, 5).join(""); 
-        let seq4 = allResults.slice(0, 4).join("");
         let predResult = "";
 
-        // 1. User Direct Sequences
+        // Pattern Matching Logic
         if (seq5 === "BSBBS") {
             predResult = "BIG";
         } else if (seq5 === "SBSSB") {
             predResult = "SMALL";
         } 
-        // 2. Streaks Logic (Long Dragon Detection)
         else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 3. Alternating Logic (B-S-B-S)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Weighted Trend Analysis on History
         else {
             let scoreB = 0;
             let scoreS = 0;
-
             let mirrorSeq5 = invertPattern(seq5);
 
             for (let i = 1; i < allResults.length - 6; i++) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
                 let nextItem = allResults[i - 1];
-
-                let weight = i < 50 ? 3 : 1;
+                let weight = i < 30 ? 3 : 1;
 
                 if (histSeq5 === seq5) {
                     if (nextItem === "B") scoreB += (2 * weight);
@@ -104,10 +98,12 @@ function deepHistoryPatternEngine(history) {
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 0; i < Math.min(100, allNumbers.length); i++) {
+        // Recent 50 draw weightage for precise number calculation
+        for (let i = 0; i < Math.min(50, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
-                numberFrequency[num] = (numberFrequency[num] || 0) + 1;
+                let recencyWeight = (50 - i);
+                numberFrequency[num] = (numberFrequency[num] || 0) + recencyWeight;
             }
         }
 
@@ -149,26 +145,18 @@ async function fetchWinGoData() {
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
-            let dynamicWinMsg = "";
+            let dynamicStatusMsg = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 let isResultHit = (lastPredictedResult === actualResult);
-                let isNumberHit = lastPredictedNumbers.includes(actualNum);
-                let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
-
                 let currentLevelExecuted = maintenanceLevel;
 
                 if (isResultHit) {
                     totalWins++;
                     consecLosses = 0;
 
-                    let winParts = [];
-                    if (isResultHit) winParts.push(actualResult + " WIN");
-                    if (isNumberHit) winParts.push(actualNum + " WIN");
-                    if (isColorHit) winParts.push(actualColor + " WIN");
-                    if (isNumberHit) winParts.push("JACKPOT NUMBERS");
-
-                    dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
+                    // Winner Winner Message
+                    dynamicStatusMsg = "🏆 **CONGRATULATIONS** 🏆";
 
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
@@ -177,6 +165,9 @@ async function fetchWinGoData() {
                     totalLosses++;
                     consecLosses++;
                     
+                    // Cheer Up Message for Loss
+                    dynamicStatusMsg = "💪 **CHEER UP! BETTER LUCK NEXT TIME!** 💥";
+
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                     maintenanceLevel++;
 
@@ -190,6 +181,7 @@ async function fetchWinGoData() {
                     if (maintenanceLevel > 8) maintenanceLevel = 1;
                 }
 
+                // Internal tracking up to 60 predictions
                 if (prediction60History.length > 60) {
                     prediction60History.pop();
                 }
@@ -222,51 +214,14 @@ async function fetchWinGoData() {
                           "👉 **NEXT BET:** **Level " + nextLevel + " (" + nextLevelInfo.name + ")** *(If Level " + activeLevel + " Losses)*\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n";
 
-                if (dynamicWinMsg !== "") {
-                    msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+                if (dynamicStatusMsg !== "") {
+                    msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                let historyLen = prediction60History.length;
-                let wins60 = prediction60History.filter(x => x.status === "WIN").length;
-                let losses60 = prediction60History.filter(x => x.status === "LOSS").length;
-
-                let levelCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
-                let netProfit = 0;
-
-                prediction60History.forEach(item => {
-                    let lvl = item.level;
-                    let info = levelData[lvl] || levelData[1];
-
-                    if (item.status === "WIN") {
-                        if (levelCounts[lvl] !== undefined) levelCounts[lvl]++;
-                        netProfit += (info.winPayout - info.val);
-                    } else if (item.status === "LOSS") {
-                        netProfit -= info.val;
-                    }
-                });
-
-                let profitSign = netProfit >= 0 ? "+₹" : "-₹";
-
-                msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
-                       "━━━━━━━━━━━━━━━━━━━━━\n" +
-                       "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
-                       "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n" +
-                       "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n";
-
-                if (historyLen >= 60) {
-                    msg += "━━━━━━━━━━━━━━━━━━━━━\n" +
-                           "🎯 **LEVEL WINS BREAKDOWN:**\n" +
-                           "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
-                           "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
-                           "• **Level 3 Wins:** " + levelCounts[3] + "\n" +
-                           "• **Level 4 Wins:** " + levelCounts[4] + "\n" +
-                           "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
-                           "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
-                           "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
-                           "• **Level 8 Wins:** " + levelCounts[8] + "\n";
-                }
-
-                msg += "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                // Simple Wins & Losses Summary (Report / Breakdown Hidden)
+                msg += "🏆 **WINS:** " + totalWins + "\n" +
+                       "💔 **LOSSES:** " + totalLosses + "\n" +
+                       "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
                 await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
