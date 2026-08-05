@@ -11,7 +11,7 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36'; 
+const SCRAPE_DO_TOKEN = 'f07a5f16d85d4c7090b3a1b7df6aab7e8d0c92fbc1d'; // Updated New Scrape.do Token
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
