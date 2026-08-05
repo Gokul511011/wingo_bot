@@ -11,8 +11,8 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
+// Direct Target URL
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -123,25 +123,22 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        console.log('[SYSTEM] Fetching data via ScrapingAnt...');
-        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=true`;
+        console.log('[SYSTEM] Fetching data directly...');
         
-        const response = await axios.get(scraperUrl, { timeout: 20000 });
-        
-        let rawContent = response.data.content || response.data;
-        if (typeof rawContent === 'string') {
-            try {
-                rawContent = JSON.parse(rawContent);
-            } catch (e) {
-                console.error('[PARSING ERROR]: Could not parse JSON from ScrapingAnt response');
-                return;
+        // Direct Axios Request with Headers to Bypass Cloudflare/Blocks
+        const response = await axios.get(TARGET_URL, { 
+            timeout: 5000,
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*'
             }
-        }
+        });
 
-        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+        let data = response.data;
+        let list = data?.data?.list || data?.list || (Array.isArray(data) ? data : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] Received empty list from API.');
+            console.log('[SYSTEM] Direct fetch returned empty list.');
             return;
         }
 
@@ -255,4 +252,5 @@ async function fetchWinGoData() {
     }
 }
 
-setInterval(fetchWinGoData, 8000);
+// Check every 6 seconds
+setInterval(fetchWinGoData, 6000);
