@@ -128,12 +128,12 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        console.log('[SYSTEM] Fetching data via ScrapingAnt Normal Mode...');
+        console.log('[SYSTEM] Fetching data via ScrapingAnt API Mode...');
         
-        // ScrapingAnt with default browser mode (browser=true)
-        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
+        // ScrapingAnt call with return_page_source=false and browser=false for pure API extraction
+        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
 
-        const response = await axios.get(scraperUrl, { timeout: 30000 });
+        const response = await axios.get(scraperUrl, { timeout: 20000 });
         
         let rawContent = response.data.content || response.data;
         
@@ -141,7 +141,7 @@ async function fetchWinGoData() {
             try { 
                 rawContent = JSON.parse(rawContent); 
             } catch (e) {
-                // Stripping HTML tags if response wrapped in HTML tags
+                // Remove HTML tags if present
                 let cleanStr = rawContent.replace(/<[^>]*>?/gm, '').trim();
                 try { rawContent = JSON.parse(cleanStr); } catch (err) {}
             }
@@ -150,7 +150,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] Received empty list. Raw Response Sample:', String(JSON.stringify(rawContent)).substring(0, 150));
+            console.log('[SYSTEM] Received empty list. Sample Response:', String(JSON.stringify(rawContent)).substring(0, 150));
             isFetching = false;
             return;
         }
@@ -268,5 +268,5 @@ async function fetchWinGoData() {
     }
 }
 
-// Check every 12 seconds
-setInterval(fetchWinGoData, 12000);
+// Check every 10 seconds
+setInterval(fetchWinGoData, 10000);
