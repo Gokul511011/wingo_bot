@@ -23,13 +23,12 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
-let lastPredictedNumbers = []; // Store array of 2 numbers
+let lastPredictedNumbers = []; 
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
-let skipCounter = 0;
 
 // 💰 Custom Level Amounts under ₹2,500 Budget (Total Max: ₹2,393)
 const levelAmounts = {
@@ -100,20 +99,17 @@ function precisionEngine(history) {
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    // Scan recent history numbers for weighted dual-number accuracy
     let recentNums = allNumbers.slice(0, Math.min(30, allNumbers.length));
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
 
     recentNums.forEach((n, index) => {
         if (candidateNums.includes(n)) {
-            // Higher weightage for most recent occurrences
             let weight = index < 10 ? 3 : index < 20 ? 2 : 1;
             freqMap[n] = (freqMap[n] || 0) + weight;
         }
     });
 
-    // Sort numbers by highest weightage and pick TOP 2
     let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
     let targetNumbers = [sortedCandidates[0], sortedCandidates[1]]; 
 
@@ -147,7 +143,6 @@ async function fetchWinGoData() {
             let cheerMsgText = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
-                // Check if actual result matches any of the 2 predicted numbers
                 let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
 
                 if (lastPredictedResult === actualResult) {
@@ -167,21 +162,10 @@ async function fetchWinGoData() {
                     if (maintenanceLevel > 8) {
                         maintenanceLevel = 1;
                     }
-
-                    // Smart Skip: Wait 2 periods after loss to reset bad trend
-                    skipCounter = 2;
                 }
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                if (skipCounter > 0) {
-                    console.log(`[SAFE SKIP] Skipping period ${nextPeriod}. Skips left: ${skipCounter}`);
-                    skipCounter--;
-                    lastSentPeriod = nextPeriod;
-                    lastPredictedPeriod = null;
-                    return;
-                }
-
                 let pred = precisionEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
@@ -209,7 +193,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Dual Number Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Non-stop Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -217,6 +201,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Dual Number Engine Active...");
-// Polling every 12 seconds to match 30s game timing accurately
+console.log("WinGo 30S Non-Stop Engine Active...");
 setInterval(fetchWinGoData, 12000);
