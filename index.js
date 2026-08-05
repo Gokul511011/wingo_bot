@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Dual Number Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S High Accuracy Dual Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -42,35 +42,32 @@ const levelAmounts = {
     8: "₹1300"
 };
 
-// 🎯 DEEP TREND & DUAL NUMBER PRECISION ENGINE
+// 🎯 HIGH-ACCURACY DUAL ENGINE WITH STREAK & MOMENTUM FILTER
 function precisionEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
         let last3 = allResults.slice(0, 3);
+        let last4 = allResults.slice(0, 4);
         
-        // 1. DRAGON / STREAK DETECTOR
+        // 1. DRAGON / STREAK FOLLOWER (HIGH PRIORITY)
         if (last3[0] === last3[1] && last3[1] === last3[2]) {
             let predRes = last3[0] === "B" ? "BIG" : "SMALL";
             return generateOutput(predRes, allNumbers);
         }
 
-        // 2. PATTERN MATCHING ACROSS AVAILABLE HISTORY
-        let last4 = allResults.slice(0, 4);
+        // 2. PATTERN REPETITION ANALYSIS
         let pattern4Str = last4.join("");
-        
-        let deepHistory = allResults; 
-
         let scoreB = 0;
         let scoreS = 0;
 
-        for (let i = 1; i < deepHistory.length - 4; i++) {
-            let subPattern = deepHistory.slice(i, i + 4).join("");
+        for (let i = 1; i < allResults.length - 4; i++) {
+            let subPattern = allResults.slice(i, i + 4).join("");
             if (pattern4Str === subPattern) {
-                let nextOutcome = deepHistory[i - 1];
-                if (nextOutcome === "B") scoreB += 15;
-                if (nextOutcome === "S") scoreS += 15;
+                let nextOutcome = allResults[i - 1];
+                if (nextOutcome === "B") scoreB += 20;
+                if (nextOutcome === "S") scoreS += 20;
             }
         }
 
@@ -81,11 +78,12 @@ function precisionEngine(history) {
         let bigIn10 = recent10.filter(r => r === "B").length;
         let bigIn20 = recent20.filter(r => r === "B").length;
 
-        if (bigIn10 >= 6) scoreB += 10;
-        if (bigIn10 <= 4) scoreS += 10;
+        // Weightage boosting for strong momentum
+        if (bigIn10 >= 6) scoreB += 15;
+        if (bigIn10 <= 4) scoreS += 15;
 
-        if (bigIn20 >= 12) scoreB += 8;
-        if (bigIn20 <= 8) scoreS += 8;
+        if (bigIn20 >= 12) scoreB += 10;
+        if (bigIn20 <= 8) scoreS += 10;
 
         let patternNext = scoreB >= scoreS ? "BIG" : "SMALL";
         return generateOutput(patternNext, allNumbers);
@@ -99,13 +97,14 @@ function precisionEngine(history) {
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    let recentNums = allNumbers.slice(0, Math.min(30, allNumbers.length));
+    // Scan recent 10 numbers for hot candidate selection
+    let recentNums = allNumbers.slice(0, Math.min(10, allNumbers.length));
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
 
     recentNums.forEach((n, index) => {
         if (candidateNums.includes(n)) {
-            let weight = index < 10 ? 3 : index < 20 ? 2 : 1;
+            let weight = 10 - index; // Higher weight to recent outcomes
             freqMap[n] = (freqMap[n] || 0) + weight;
         }
     });
@@ -193,7 +192,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] High Accuracy Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -201,5 +200,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Engine Active...");
+console.log("WinGo 30S High-Accuracy Engine Active...");
 setInterval(fetchWinGoData, 12000);
