@@ -1,4 +1,60 @@
-// 🎯 ULTRA HIGH ACCURACY ENGINE v3.0 (Loss Protection & High Win Logic)
+const axios = require('axios');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+// Express Server Setup (Render 24/7 Keeping Alive & Port Binding)
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => res.send('WinGo 30S High Accuracy Bot Active!'));
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT}`);
+});
+
+// Bot Configuration
+const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+const CHANNEL_ID = '-1002486828817';
+
+// Scrape.do Proxy API
+const SCRAPE_DO_TOKEN = '4ddb13d503da4001819d56960d645d7adef32fa264b';
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
+const PROXY_URL = `https://api.scrape.do/?token=${SCRAPE_DO_TOKEN}&url=${encodeURIComponent(TARGET_URL)}`;
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+let lastSentPeriod = "";
+let lastPredictedResult = null;
+let lastPredictedNumbers = []; 
+let lastPredictedColorType = null;
+let lastPredictedPeriod = null;
+
+let totalWins = 0;
+let totalLosses = 0;
+let consecutiveLosses = 0; // Loss Streak Counter
+let maintenanceLevel = 1;
+
+// Level Investment Amounts
+const levelAmounts = {
+    1: "₹1",
+    2: "₹3",
+    3: "₹9",
+    4: "₹27",
+    5: "₹81",
+    6: "₹243",
+    7: "₹729",
+    8: "₹1300"
+};
+
+function getActualColorInfo(num) {
+    if (num === 0) return { full: "RED / VIOLET", type: "RED" };
+    if (num === 5) return { full: "GREEN / VIOLET", type: "GREEN" };
+    if ([1, 3, 7, 9].includes(num)) return { full: "GREEN", type: "GREEN" };
+    return { full: "RED", type: "RED" };
+}
+
+// 🎯 ULTRA HIGH ACCURACY ENGINE v3.0
 function highAccuracyEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -7,35 +63,33 @@ function highAccuracyEngine(history) {
         let last15 = allResults.slice(0, 15);
         let predResult = "BIG";
 
-        // Count Big vs Small in recent 15 draws
         let countB = last15.filter(x => x === "BIG").length;
         let countS = last15.length - countB;
 
-        // 1. DRAGON PATTERN (Thodarnthu 3+ same result - Strongest Trend)
+        // 1. DRAGON PATTERN
         if (last15[0] === last15[1] && last15[1] === last15[2]) {
             predResult = last15[0];
         } 
-        // 2. 1-2 STREAK BREAK PATTERN (e.g., S, S, B -> Expect B / B, B, S -> Expect S)
+        // 2. 1-2 STREAK BREAK PATTERN
         else if (last15[1] === last15[2] && last15[0] !== last15[1]) {
-            predResult = last15[0]; // Continuous momentum follow
+            predResult = last15[0];
         }
-        // 3. ZIG-ZAG PATTERN (B, S, B, S -> Alternate Trend)
+        // 3. ZIG-ZAG PATTERN
         else if (last15[0] !== last15[1] && last15[1] !== last15[2] && last15[2] !== last15[3]) {
             predResult = last15[0] === "BIG" ? "SMALL" : "BIG";
         } 
-        // 4. TREND DOMINANCE FILTER (Strong Market Bias)
+        // 4. TREND DOMINANCE FILTER
         else {
             if (countB >= 9) {
-                predResult = "BIG"; // Big Dominance
+                predResult = "BIG";
             } else if (countS >= 9) {
-                predResult = "SMALL"; // Small Dominance
+                predResult = "SMALL";
             } else {
-                // Reversal check for balanced market
                 predResult = last15[0] === "BIG" ? "SMALL" : "BIG";
             }
         }
 
-        // 5. HIGH PROBABILITY LUCKY NUMBERS (Top 2 Frequency weighted)
+        // 5. HIGH PROBABILITY LUCKY NUMBERS
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let recent20 = allNumbers.slice(0, 20);
         let freqMap = {};
@@ -43,16 +97,13 @@ function highAccuracyEngine(history) {
         candidateNums.forEach(n => freqMap[n] = 0);
         recent20.forEach((n, idx) => {
             if (candidateNums.includes(n)) {
-                // Higher weightage for most recent occurrences
                 freqMap[n] += (20 - idx); 
             }
         });
 
-        // Filter non-repeating numbers for higher precision
         let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
         let targetNumbers = [sortedCandidates[0], sortedCandidates[1]];
 
-        // Colour mapping
         let mainColorType = predResult === "BIG" ? "GREEN" : "RED";
         let colorStr = mainColorType === "GREEN" ? "🟢 GREEN" : "🔴 RED";
 
@@ -67,3 +118,89 @@ function highAccuracyEngine(history) {
         return { predResult: "BIG", targetNumbers: [7, 8], colorStr: "🟢 GREEN", mainColorType: "GREEN" };
     }
 }
+
+async function fetchWinGoData() {
+    try {
+        const response = await axios.get(PROXY_URL, { timeout: 15000 });
+
+        let data = response.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) {}
+        }
+
+        let list = data?.data?.list || data?.list || data;
+
+        if (Array.isArray(list) && list.length > 0) {
+            let lastItem = list[0];
+            let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+            let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+            let actualColorInfo = getActualColorInfo(actualNum);
+            let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+            
+            let nextPeriod = String(BigInt(actualPeriod) + 1n);
+            let cheerMsgText = "";
+
+            if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+                let isResultHit = (lastPredictedResult === actualResult);
+                let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
+                let isColorHit = (lastPredictedColorType === actualColorInfo.type);
+
+                if (isResultHit) {
+                    totalWins++;
+                    consecutiveLosses = 0; // Reset consecutive loss streak on Win
+                    maintenanceLevel = 1;
+                    
+                    if (isNumberHit && isColorHit) {
+                        cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColorInfo.type} JACKPOT WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    } else {
+                        cheerMsgText = `🏆🎉 **${actualResult} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    }
+                } else {
+                    totalLosses++;
+                    consecutiveLosses++; // Increment loss streak
+                    maintenanceLevel++;
+                    if (maintenanceLevel > 8) maintenanceLevel = 1;
+                    cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
+                }
+            }
+
+            if (nextPeriod !== lastSentPeriod) {
+                let pred = highAccuracyEngine(list);
+                let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
+
+                let msg = "👑 **KING PREDICTION**\n" +
+                          "⚡ **WinGo 30S** ⚡\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                          "🎯 **TARGET:** **" + pred.predResult + "**\n" +
+                          "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                          "🔢 **LUCKY NUMBERS:** `" + pred.targetNumbers.join(", ") + "`\n" +
+                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n";
+
+                if (cheerMsgText !== "") {
+                    msg += cheerMsgText + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+                }
+
+                msg += "🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
+                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n" +
+                       "⚠️ **CURRENT LOSS STREAK:** **" + consecutiveLosses + " Level(s) Loss**\n\n" +
+                       "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+                await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+
+                lastSentPeriod = nextPeriod;
+                lastPredictedPeriod = nextPeriod;
+                lastPredictedResult = pred.predResult;
+                lastPredictedNumbers = pred.targetNumbers;
+                lastPredictedColorType = pred.mainColorType;
+                console.log("[SUCCESS] Updated Prediction Sent: " + nextPeriod);
+            }
+        }
+    } catch (error) {
+        console.error('[PROXY FETCH ERROR]:', error.message);
+    }
+}
+
+console.log("WinGo 30S High Accuracy Engine Active...");
+setInterval(fetchWinGoData, 10000);
