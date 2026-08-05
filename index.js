@@ -82,7 +82,6 @@ function deepHistoryPatternEngine(history) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
                 let nextItem = allResults[i - 1];
 
-                // Give 3x weight for recent 50 turns
                 let weight = i < 50 ? 3 : 1;
 
                 if (histSeq5 === seq5) {
@@ -105,7 +104,6 @@ function deepHistoryPatternEngine(history) {
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        // Scan past 100 numbers for top frequency in target group
         for (let i = 0; i < Math.min(100, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
@@ -172,14 +170,14 @@ async function fetchWinGoData() {
                     dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
 
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
-                    maintenanceLevel = 1;
+                    maintenanceLevel = 1; // Win ஆனவுடன் Level 1-க்கு Reset ஆகும்
 
                 } else {
                     totalLosses++;
                     consecLosses++;
                     
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-                    maintenanceLevel++;
+                    maintenanceLevel++; // Loss ஆனால் மட்டுமே அடுத்த Level-க்கு மாறும்
 
                     if (consecLosses >= 6) {
                         cooldownCounter = 5;
@@ -205,8 +203,13 @@ async function fetchWinGoData() {
                 }
 
                 let pred = deepHistoryPatternEngine(list);
-                let currentLevelInfo = levelData[maintenanceLevel] || levelData[1];
-                let nextLevelInfo = levelData[maintenanceLevel + 1] || levelData[1];
+                
+                // துல்லியமான Level Info பெறப்படுகிறது
+                let activeLevel = maintenanceLevel;
+                let nextLevel = (activeLevel >= 8) ? 1 : activeLevel + 1;
+                
+                let currentLevelInfo = levelData[activeLevel] || levelData[1];
+                let nextLevelInfo = levelData[nextLevel] || levelData[1];
 
                 let msg = "👑 **KING PREDICTION**\n" +
                           "⚡ **WinGo 30S** ⚡\n" +
@@ -215,8 +218,8 @@ async function fetchWinGoData() {
                           "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                           "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                           "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentLevelInfo.name + ")**\n" +
-                          "👉 **NEXT BET:** **Level " + (maintenanceLevel + 1) + " (" + nextLevelInfo.name + ")** *(If Level " + maintenanceLevel + " Losses)*\n" +
+                          "💰 **LEVEL AMOUNT:** **Level " + activeLevel + " (" + currentLevelInfo.name + ")**\n" +
+                          "👉 **NEXT BET:** **Level " + nextLevel + " (" + nextLevelInfo.name + ")** *(If Level " + activeLevel + " Losses)*\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n";
 
                 if (dynamicWinMsg !== "") {
