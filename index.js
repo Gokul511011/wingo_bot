@@ -2,7 +2,7 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render Ping
+// Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('WinGo 30S Safe Engine Active!'));
@@ -11,7 +11,7 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPE_DO_TOKEN = 'YOUR_SCRAPE_DO_TOKEN'; // 👈 இங்க உங்க Scrape.do API Token-ஐ சரியா Paste பண்ணுங்க
+const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36'; // Updated Scrape.do Token
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
