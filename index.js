@@ -2,13 +2,13 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render (Prevents Sleep & Port Error)
+// Express Server
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Pattern Engine v3.1 Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Pattern & Deep History Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
-// Configuration
+// Config
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
@@ -21,6 +21,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 let lastSentPeriod = "";
 let lastPredictedResult = null;
 let lastPredictedNumbers = [];
+let lastPredictedColor = "";
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
@@ -28,88 +29,96 @@ let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
 
+// 60 Predictions History Array
+let prediction60History = [];
+
 const levelAmounts = {
-    1: "₹10",
-    2: "₹30",
-    3: "₹90",
-    4: "₹270",
-    5: "₹810",
-    6: "₹2430",
-    7: "₹7290"
+    1: "₹10", 2: "₹30", 3: "₹90", 4: "₹270", 5: "₹810", 6: "₹2430", 7: "₹7290"
 };
 
-// 🎯 ULTRA HIGH ACCURACY ENGINE v3.1
-function highAccuracyEngine(history) {
+// 🎯 DEEP HISTORY PATTERN ENGINE (Dragon, Mirror, ZigZag, Double Search)
+function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
+        let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let last15 = allResults.slice(0, 15);
+        let recentPattern = allResults.slice(0, 4).join(""); 
         let predResult = "BIG";
 
-        let countB = last15.filter(x => x === "BIG").length;
-        let countS = last15.length - countB;
-
-        // 1. DRAGON PATTERN (Thodarnthu 3+ same outcome)
-        if (last15[0] === last15[1] && last15[1] === last15[2]) {
-            predResult = last15[0];
+        // 1. Dragon Pattern (3+ Same outcome)
+        if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
+            predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 2. ZIG-ZAG PATTERN (B, S, B, S -> Alternate Trend)
-        else if (last15[0] !== last15[1] && last15[1] !== last15[2] && last15[2] !== last15[3]) {
-            predResult = last15[0] === "BIG" ? "SMALL" : "BIG";
-        } 
-        // 3. 1-2 STREAK RECOVERY
-        else if (last15[1] === last15[2] && last15[0] !== last15[1]) {
-            predResult = last15[0]; 
+        // 2. Zig-Zag Pattern Check (B-S-B-S)
+        else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
+            predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. TREND DOMINANCE FILTER
+        // 3. Double Pattern Check (BB SS BB)
+        else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
+            predResult = allResults[0] === "B" ? "SMALL" : "BIG";
+        }
+        // 4. Page 1 & Deep History Matching (50 to 100 Pages Lookup)
         else {
-            if (countB >= 9) {
-                predResult = "BIG";
-            } else if (countS >= 9) {
-                predResult = "SMALL";
-            } else {
-                // Follow latest momentum
-                predResult = last15[0];
+            let scoreB = 0;
+            let scoreS = 0;
+
+            for (let i = 1; i < allResults.length - 5; i++) {
+                let historicalSeq = allResults.slice(i, i + 4).join("");
+                if (recentPattern === historicalSeq) {
+                    let nextItem = allResults[i - 1];
+                    if (nextItem === "B") scoreB++;
+                    if (nextItem === "S") scoreS++;
+                }
             }
+
+            if (scoreB > scoreS) predResult = "BIG";
+            else if (scoreS > scoreB) predResult = "SMALL";
+            else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // 5. HIGH PROBABILITY LUCKY NUMBERS
+        // 🔢 SMART NUMBER PATTERN ENGINE (First 3 Numbers Match in History)
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let recent20 = allNumbers.slice(0, 20);
-        let freqMap = {};
-        
-        candidateNums.forEach(n => freqMap[n] = 0);
-        recent20.forEach((n, idx) => {
-            if (candidateNums.includes(n)) {
-                freqMap[n] += (20 - idx); 
+        let recent3Nums = allNumbers.slice(0, 3);
+        let matchedNumbers = [];
+
+        for (let i = 1; i < allNumbers.length - 4; i++) {
+            let matches = 0;
+            if (allNumbers[i] === recent3Nums[0]) matches++;
+            if (allNumbers[i + 1] === recent3Nums[1]) matches++;
+            if (allNumbers[i + 2] === recent3Nums[2]) matches++;
+
+            if (matches >= 2) { 
+                let historicalNextNum = allNumbers[i - 1];
+                if (candidateNums.includes(historicalNextNum) && !matchedNumbers.includes(historicalNextNum)) {
+                    matchedNumbers.push(historicalNextNum);
+                }
             }
-        });
+            if (matchedNumbers.length >= 2) break;
+        }
 
-        // Copy array before sorting to prevent mutation bug
-        let sortedCandidates = [...candidateNums].sort((a, b) => freqMap[b] - freqMap[a]);
-        let targetNumbers = [sortedCandidates[0], sortedCandidates[1]];
+        if (matchedNumbers.length < 2) {
+            let defaultPicks = candidateNums.filter(n => !matchedNumbers.includes(n));
+            matchedNumbers.push(...defaultPicks.slice(0, 2 - matchedNumbers.length));
+        }
 
-        let numbersStr = targetNumbers.join(", ");
-        let mainColorType = predResult === "BIG" ? "GREEN" : "RED";
-        let colorStr = mainColorType === "GREEN" ? "🟢 GREEN" : "🔴 RED";
-
-        if (targetNumbers.includes(0) || targetNumbers.includes(5)) {
+        let numbersStr = matchedNumbers.join(", ");
+        let mainColor = predResult === "BIG" ? "GREEN" : "RED";
+        let colorStr = mainColor === "GREEN" ? "🟢 GREEN" : "🔴 RED";
+        if (matchedNumbers.includes(0) || matchedNumbers.includes(5)) {
             colorStr += " / 🟣 VIOLET";
         }
 
-        return { predResult, targetNumbers, numbersStr, colorStr, mainColorType };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, mainColor };
 
     } catch (e) {
-        console.error("Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN", mainColorType: "GREEN" };
+        console.error("Pattern Engine Error:", e.message);
+        return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN", mainColor: "GREEN" };
     }
 }
 
 async function fetchWinGoData() {
     try {
         const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
-        
         const response = await axios.get(scraperUrl, { timeout: 8000 });
         let data = response.data;
 
@@ -123,38 +132,51 @@ async function fetchWinGoData() {
             let lastItem = list[0];
             let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
             let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+            let actualColor = (actualNum === 0 || actualNum === 5) ? "VIOLET" : (actualNum >= 5 ? "GREEN" : "RED");
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
-            let cheerMsgText = "";
+            let dynamicWinMsg = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+                let isResultHit = (lastPredictedResult === actualResult);
                 let isNumberHit = lastPredictedNumbers.includes(actualNum);
+                let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
 
-                if (lastPredictedResult === actualResult) {
+                let currentLevelExecuted = maintenanceLevel;
+
+                if (isResultHit) {
                     totalWins++;
                     consecLosses = 0;
+
+                    // தமிழ் பாணியில் வெற்றி அடைந்ததை மட்டும் சேர்க்கும் லாஜிக்
+                    let winParts = [];
+                    if (isResultHit) winParts.push(actualResult + " WIN");
+                    if (isNumberHit) winParts.push(actualNum + " WIN");
+                    if (isColorHit) winParts.push(actualColor + " WIN");
+                    if (isNumberHit) winParts.push("JACKPOT NUMBERS");
+
+                    dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
+
+                    prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
 
-                    if (isNumberHit) {
-                        cheerMsgText = "💥 **WINNER JACKPOT (EXACT NUMBER HIT)** 💥\nCONGRATULATIONS 💐🎉";
-                    } else {
-                        cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
-                    }
                 } else {
                     totalLosses++;
                     consecLosses++;
+                    
+                    prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                     maintenanceLevel++;
-                    cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
+                    if (maintenanceLevel > 7) maintenanceLevel = 1;
+                }
 
-                    if (maintenanceLevel > 7) {
-                        maintenanceLevel = 1;
-                    }
+                if (prediction60History.length > 60) {
+                    prediction60History.pop();
                 }
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                let pred = highAccuracyEngine(list);
+                let pred = deepHistoryPatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -167,11 +189,15 @@ async function fetchWinGoData() {
                           "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n";
 
-                if (cheerMsgText !== "") {
-                    msg += cheerMsgText + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+                if (dynamicWinMsg !== "") {
+                    msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                msg += "\n🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
+                let recent60Wins = prediction60History.filter(x => x.status === "WIN").length;
+                let recent60Losses = prediction60History.filter(x => x.status === "LOSS").length;
+
+                msg += "\n📊 **LAST " + prediction60History.length + " PREDICTIONS:** " + recent60Wins + "W / " + recent60Losses + "L\n" +
+                       "🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
                        "💔 **TOTAL LOSS:** **" + totalLosses + "**\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
@@ -181,7 +207,8 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Prediction Sent for Period: " + nextPeriod);
+                lastPredictedColor = pred.mainColor;
+                console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -189,5 +216,4 @@ async function fetchWinGoData() {
     }
 }
 
-// Fetch every 3 seconds for quick alerts
 setInterval(fetchWinGoData, 3000);
