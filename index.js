@@ -24,14 +24,13 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 let lastSentPeriod = "";
 let lastPredictedResult = null;
 let lastPredictedNumbers = []; 
-let lastPredictedColorType = null; // 'GREEN' or 'RED'
+let lastPredictedColorType = null;
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
 let maintenanceLevel = 1;
 
-// Custom Level Amounts
 const levelAmounts = {
     1: "₹1",
     2: "₹3",
@@ -43,45 +42,50 @@ const levelAmounts = {
     8: "₹1300"
 };
 
-// Helper: Determine actual color string and main color type
 function getActualColorInfo(num) {
     if (num === 0) return { full: "RED / VIOLET", type: "RED" };
     if (num === 5) return { full: "GREEN / VIOLET", type: "GREEN" };
     if ([1, 3, 7, 9].includes(num)) return { full: "GREEN", type: "GREEN" };
-    return { full: "RED", type: "RED" }; // 2, 4, 6, 8
+    return { full: "RED", type: "RED" };
 }
 
-// 🎯 HIGH WIN-RATE PREDICTION ENGINE
+// 🎯 IMPROVED PREDICTION ENGINE (Supports Alternate Trends & Smart Frequency)
 function highAccuracyEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let recent10 = allResults.slice(0, 10);
-        let countB = recent10.filter(x => x === "B").length;
-        let countS = recent10.filter(x => x === "S").length;
-
-        let last3 = allResults.slice(0, 3);
-        
+        let last5 = allResults.slice(0, 5);
         let predResult = "BIG";
 
-        // 1. STREAK FOLLOW (Dragon Trend)
-        if (last3[0] === last3[1] && last3[1] === last3[2]) {
-            predResult = last3[0] === "B" ? "BIG" : "SMALL";
+        // 1. Alternate Trend Detection (e.g., B, S, B, S)
+        let isZigZag = (last5[0] !== last5[1]) && (last5[1] !== last5[2]) && (last5[2] !== last5[3]);
+        
+        // 2. Streak Follow (Dragon Trend: B, B, B)
+        let isDragon = (last5[0] === last5[1]) && (last5[1] === last5[2]);
+
+        if (isDragon) {
+            // Follow current streak
+            predResult = last5[0] === "B" ? "BIG" : "SMALL";
+        } else if (isZigZag) {
+            // Predict reverse of last result for Zig-Zag
+            predResult = last5[0] === "B" ? "SMALL" : "BIG";
         } else {
-            // 2. MOMENTUM TREND
+            // 3. Majority Weighted Average over last 15 draws
+            let countB = allResults.slice(0, 15).filter(x => x === "B").length;
+            let countS = allResults.slice(0, 15).filter(x => x === "S").length;
             predResult = countB >= countS ? "BIG" : "SMALL";
         }
 
-        // Hot Numbers Selection for the predicted side
+        // Weighted Number Frequency Analysis
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let recentNums = allNumbers.slice(0, 15);
+        let recentNums = allNumbers.slice(0, 20);
         let freqMap = {};
         candidateNums.forEach(n => freqMap[n] = 0);
 
         recentNums.forEach((n, idx) => {
             if (candidateNums.includes(n)) {
-                freqMap[n] += (15 - idx);
+                freqMap[n] += (20 - idx); // Higher weight to recent numbers
             }
         });
 
@@ -132,7 +136,6 @@ async function fetchWinGoData() {
                     totalWins++;
                     maintenanceLevel = 1;
                     
-                    // Check if Target, Number, and Color ALL WON simultaneously
                     if (isNumberHit && isColorHit) {
                         cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColorInfo.type} JACKPOT WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
                     } else {
@@ -184,4 +187,4 @@ async function fetchWinGoData() {
 }
 
 console.log("WinGo 30S High Accuracy Engine Active...");
-setInterval(fetchWinGoData, 12000);
+setInterval(fetchWinGoData, 10000); // reduced delay to 10s for 30s game
