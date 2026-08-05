@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S High Accuracy Dual Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Master Deep Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -25,6 +25,7 @@ let lastSentPeriod = "";
 let lastPredictedResult = null;
 let lastPredictedNumbers = []; 
 let lastPredictedPeriod = null;
+let lastPredictedColor = "";
 
 let totalWins = 0;
 let totalLosses = 0;
@@ -42,7 +43,7 @@ const levelAmounts = {
     8: "₹1300"
 };
 
-// 🎯 HIGH-ACCURACY DUAL ENGINE WITH STREAK & MOMENTUM FILTER
+// 🎯 DEEP 1000-HISTORY & MULTI-FACTOR PRECISION ENGINE
 function precisionEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -51,13 +52,13 @@ function precisionEngine(history) {
         let last3 = allResults.slice(0, 3);
         let last4 = allResults.slice(0, 4);
         
-        // 1. DRAGON / STREAK FOLLOWER (HIGH PRIORITY)
+        // 1. STREAK / DRAGON PATTERN DETECTOR
         if (last3[0] === last3[1] && last3[1] === last3[2]) {
             let predRes = last3[0] === "B" ? "BIG" : "SMALL";
             return generateOutput(predRes, allNumbers);
         }
 
-        // 2. PATTERN REPETITION ANALYSIS
+        // 2. PATTERN MATCHING ACROSS AVAILABLE DEEP HISTORY
         let pattern4Str = last4.join("");
         let scoreB = 0;
         let scoreS = 0;
@@ -66,19 +67,18 @@ function precisionEngine(history) {
             let subPattern = allResults.slice(i, i + 4).join("");
             if (pattern4Str === subPattern) {
                 let nextOutcome = allResults[i - 1];
-                if (nextOutcome === "B") scoreB += 20;
-                if (nextOutcome === "S") scoreS += 20;
+                if (nextOutcome === "B") scoreB += 25;
+                if (nextOutcome === "S") scoreS += 25;
             }
         }
 
-        // 3. RECENT MOMENTUM WEIGHTAGE (Last 10 & 20)
+        // 3. MOMENTUM WEIGHTAGE (Last 10 & 20)
         let recent10 = allResults.slice(0, 10);
         let recent20 = allResults.slice(0, Math.min(20, allResults.length));
         
         let bigIn10 = recent10.filter(r => r === "B").length;
         let bigIn20 = recent20.filter(r => r === "B").length;
 
-        // Weightage boosting for strong momentum
         if (bigIn10 >= 6) scoreB += 15;
         if (bigIn10 <= 4) scoreS += 15;
 
@@ -97,14 +97,14 @@ function precisionEngine(history) {
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    // Scan recent 10 numbers for hot candidate selection
-    let recentNums = allNumbers.slice(0, Math.min(10, allNumbers.length));
+    // Weighted analysis for hot dual numbers
+    let recentNums = allNumbers.slice(0, Math.min(20, allNumbers.length));
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
 
     recentNums.forEach((n, index) => {
         if (candidateNums.includes(n)) {
-            let weight = 10 - index; // Higher weight to recent outcomes
+            let weight = 20 - index;
             freqMap[n] = (freqMap[n] || 0) + weight;
         }
     });
@@ -112,13 +112,14 @@ function generateOutput(predResult, allNumbers) {
     let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
     let targetNumbers = [sortedCandidates[0], sortedCandidates[1]]; 
 
-    let primaryColour = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+    let primaryColour = predResult === "BIG" ? "GREEN" : "RED";
+    let colorDisplay = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
     
     if (targetNumbers.includes(0) || targetNumbers.includes(5)) {
-        primaryColour += " / 🟣 VIOLET";
+        colorDisplay += " / 🟣 VIOLET";
     }
 
-    return { predResult, targetNumbers, colorStr: primaryColour };
+    return { predResult, targetNumbers, colorStr: colorDisplay, rawColor: primaryColour };
 }
 
 async function fetchWinGoData() {
@@ -136,6 +137,7 @@ async function fetchWinGoData() {
             let lastItem = list[0];
             let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
             let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+            let actualColor = actualNum >= 5 ? "GREEN" : "RED";
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -148,11 +150,8 @@ async function fetchWinGoData() {
                     totalWins++;
                     maintenanceLevel = 1;
 
-                    if (isNumberHit) {
-                        cheerMsgText = `💥 **JACKPOT WINNER (NUMBER ${actualNum} HIT)** 💥\nCONGRATULATIONS 💐🎉`;
-                    } else {
-                        cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
-                    }
+                    // Custom detailed result format as requested
+                    cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColor} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
                 } else {
                     totalLosses++;
                     maintenanceLevel++;
@@ -192,7 +191,8 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] High Accuracy Prediction Sent: " + nextPeriod);
+                lastPredictedColor = pred.rawColor;
+                console.log("[SUCCESS] Master Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -200,5 +200,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S High-Accuracy Engine Active...");
+console.log("WinGo 30S Master Deep Engine Active...");
 setInterval(fetchWinGoData, 12000);
