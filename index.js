@@ -5,13 +5,13 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Safe Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Safe Inverse Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36'; // Updated Scrape.do Token
+const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -39,6 +39,7 @@ const levelAmounts = {
     7: "₹7290"
 };
 
+// 🎯 HIGH-PRECISION EXACT & INVERSE PATTERN ENGINE
 function safePatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -46,6 +47,7 @@ function safePatternEngine(history) {
 
         let last5 = allResults.slice(0, 5);
 
+        // 🐉 1. DRAGON PATTERN CHECK
         let dragonCount = 1;
         for (let i = 0; i < last5.length - 1; i++) {
             if (last5[i] === last5[i + 1]) dragonCount++;
@@ -57,24 +59,38 @@ function safePatternEngine(history) {
             return generateOutput(predRes, allNumbers);
         }
 
-        let pattern5Str = last5.join("");
+        // 🔄 2. EXACT & INVERSE PATTERN MATCHING
+        let exactPattern = last5.join(""); // e.g., B-S-B-B-S
+        let inversePattern = last5.map(r => r === "B" ? "S" : "B").join(""); // e.g., S-B-S-S-B
+
         let scoreB = 0;
         let scoreS = 0;
 
         for (let i = 1; i < allResults.length - 6; i++) {
             let historical5 = allResults.slice(i, i + 5).join("");
-            if (pattern5Str === historical5) {
-                let nextOutcome = allResults[i - 1];
+            let nextOutcome = allResults[i - 1];
+
+            // Exact Pattern Score
+            if (exactPattern === historical5) {
                 if (nextOutcome === "B") scoreB += 5;
                 if (nextOutcome === "S") scoreS += 5;
+            }
+
+            // Inverse Pattern Score (Opposite Result Mapping)
+            if (inversePattern === historical5) {
+                if (nextOutcome === "B") scoreS += 4; // Inverse match gives opposite weight
+                if (nextOutcome === "S") scoreB += 4;
             }
         }
 
         let patternNext = scoreB >= scoreS ? "BIG" : "SMALL";
+
+        // 📊 3. RECENT TREND RATIO FILTER (OVERALL 20 RESULTS)
         let recent20 = allResults.slice(0, 20);
         let bigCount = recent20.filter(r => r === "B").length;
         let trendNext = bigCount >= 10 ? "BIG" : "SMALL";
 
+        // Double Confirmation Alignment
         let finalPred = (patternNext === trendNext) ? patternNext : (last5[0] === "B" ? "SMALL" : "BIG");
 
         return generateOutput(finalPred, allNumbers);
@@ -223,5 +239,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Safe Engine Active...");
+console.log("WinGo 30S Safe Inverse Engine Active...");
 setInterval(fetchWinGoData, 15000);
