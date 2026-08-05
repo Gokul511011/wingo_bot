@@ -5,13 +5,12 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S High Precision Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Direct Fetch Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPE_DO_TOKEN = 'f07a5f16d85d4c7090b3a1b7df6aab7e8d0c92fbc1d'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -46,7 +45,7 @@ function precisionEngine(history) {
 
         let last3 = allResults.slice(0, 3);
         
-        // 1. STREAK / DRAGON CONTINUITY (Keep predicting current trend)
+        // 1. STREAK / DRAGON CONTINUITY
         if (last3[0] === last3[1] && last3[1] === last3[2]) {
             let predRes = last3[0] === "B" ? "BIG" : "SMALL";
             return generateOutput(predRes, allNumbers);
@@ -69,7 +68,6 @@ function precisionEngine(history) {
             }
         }
 
-        // Recent 10 momentum boost
         let recent10 = allResults.slice(0, 10);
         let bigIn10 = recent10.filter(r => r === "B").length;
         if (bigIn10 >= 6) scoreB += 5;
@@ -87,7 +85,6 @@ function precisionEngine(history) {
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    // Pick SINGLE highest frequency number in recent 15 results
     let recentNums = allNumbers.slice(0, 15);
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
@@ -99,12 +96,10 @@ function generateOutput(predResult, allNumbers) {
     });
 
     let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
-    let targetNumber = sortedCandidates[0]; // Single Number Only
+    let targetNumber = sortedCandidates[0]; 
 
-    // Colour mapping based on prediction & single number probability
     let primaryColour = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
     
-    // Violet special focus if number is 0 or 5
     if (targetNumber === 0 || targetNumber === 5) {
         primaryColour += " / 🟣 VIOLET";
     }
@@ -114,10 +109,15 @@ function generateOutput(predResult, allNumbers) {
 
 async function fetchWinGoData() {
     try {
-        const encodedTarget = encodeURIComponent(TARGET_URL);
-        const proxyUrl = `http://api.scrape.do?token=${SCRAPE_DO_TOKEN}&url=${encodedTarget}&super=true`;
-
-        const response = await axios.get(proxyUrl, { timeout: 15000 });
+        // Direct Request without Scrape.do Proxy
+        const response = await axios.get(TARGET_URL, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Referer': 'https://www.rajastake7.com/'
+            }
+        });
 
         let data = response.data;
         if (typeof data === 'string') {
@@ -156,7 +156,6 @@ async function fetchWinGoData() {
                         maintenanceLevel = 1;
                     }
 
-                    // Strict Skip 2 periods after 1 loss
                     skipCounter = 2;
                 }
             }
@@ -197,13 +196,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumber = pred.targetNumber;
-                console.log("[SUCCESS] WinGo 30S Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Direct Fetch WinGo Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
+        console.error('[DIRECT FETCH ERROR]:', error.message);
     }
 }
 
-console.log("WinGo 30S Precision Engine Active...");
+console.log("WinGo 30S Direct Engine Active...");
 setInterval(fetchWinGoData, 15000);
