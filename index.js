@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Fast Pattern Analyzer Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S 5-Sequence Pattern Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -13,7 +13,7 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
 
-// ⚡ UPDATED: 30S WinGo API Endpoint
+// ⚡ 30S WinGo API Endpoint
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -42,45 +42,48 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 LAST 10 SEQUENCE ANALYZER ENGINE
-function analyzeLast10Sequence(results10) {
-    // 1. Dragon Detection (Continuous 3+ of same)
+// 🎯 LAST 5 RESULTS PATTERN & DRAGON CALCULATION ENGINE
+function analyzeLast5Sequence(resultsAll) {
+    // Take recent 5 results
+    let last5 = resultsAll.slice(0, 5); // Index 0 is most recent, 4 is 5th recent
+
+    // 🐉 1. DRAGON PATTERN CHECK (3+ continuous same outcome)
     let dragonCount = 1;
-    for (let i = 0; i < results10.length - 1; i++) {
-        if (results10[i] === results10[i + 1]) dragonCount++;
+    for (let i = 0; i < last5.length - 1; i++) {
+        if (last5[i] === last5[i + 1]) dragonCount++;
         else break;
     }
+
     if (dragonCount >= 3) {
-        return { mode: "DRAGON", next: results10[0] === "B" ? "BIG" : "SMALL" };
+        // Continue Dragon Trend
+        return { mode: "DRAGON", next: last5[0] === "B" ? "BIG" : "SMALL" };
     }
 
-    // 2. Zig-Zag Detection (Alternate B-S-B-S in last 4)
-    let isZigZag = true;
-    for (let i = 0; i < 4; i++) {
-        if (results10[i] === results10[i + 1]) {
-            isZigZag = false;
-            break;
+    // ⚡ 2. LAST 5 SEQUENCE PATTERN MATCHING ACROSS 50 PAGES HISTORY
+    let pattern5Str = last5.join(""); // e.g. "BSBBB"
+    let scoreB = 0;
+    let scoreS = 0;
+
+    for (let i = 1; i < resultsAll.length - 6; i++) {
+        let historical5 = resultsAll.slice(i, i + 5).join("");
+        if (pattern5Str === historical5) {
+            let nextOutcome = resultsAll[i - 1]; // What appeared right after this 5-sequence
+            if (nextOutcome === "B") scoreB += 5;
+            if (nextOutcome === "S") scoreS += 5;
         }
     }
-    if (isZigZag) {
-        return { mode: "ZIGZAG", next: results10[0] === "B" ? "SMALL" : "BIG" };
+
+    if (scoreB > scoreS) return { mode: "PATTERN_MATCH", next: "BIG" };
+    if (scoreS > scoreB) return { mode: "PATTERN_MATCH", next: "SMALL" };
+
+    // 🪞 3. FALLBACK ZIG-ZAG / ALTERNATE RULE FOR 5-SEQUENCE
+    // E.g., B S B S B -> next SMALL
+    if (last5[0] !== last5[1] && last5[1] !== last5[2] && last5[2] !== last5[3]) {
+        return { mode: "ZIGZAG", next: last5[0] === "B" ? "SMALL" : "BIG" };
     }
 
-    // 3. Double Pattern Detection (BB-SS or SS-BB)
-    if (results10[0] === results10[1] && results10[2] === results10[3] && results10[0] !== results10[2]) {
-        let doubleNext = results10[0] === "B" ? "SMALL" : "BIG";
-        return { mode: "DOUBLE", next: doubleNext };
-    }
-
-    // 4. Mirror Pattern Detection
-    let firstHalf = results10.slice(0, 3).join("");
-    let secondHalf = results10.slice(3, 6).join("");
-    let invertedHalf = firstHalf.split("").map(ch => ch === "B" ? "S" : "B").join("");
-    if (secondHalf === invertedHalf) {
-        return { mode: "MIRROR", next: results10[0] === "B" ? "SMALL" : "BIG" };
-    }
-
-    return null;
+    // Default reverse of last result if no match
+    return { mode: "REVERSE_FLOW", next: last5[0] === "B" ? "SMALL" : "BIG" };
 }
 
 // 🧠 HIGH-PRECISION PATTERN & NUMBER SEARCH ENGINE
@@ -89,11 +92,10 @@ function advancedPatternEngine(history, currentConsecLosses) {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // 1️⃣ ANALYZE LAST 10 SEQUENCE FIRST
-        let last10 = allResults.slice(0, 10);
-        let seqAnalysis = analyzeLast10Sequence(last10);
+        // 1️⃣ ANALYZE LAST 5 SEQUENCE
+        let seqAnalysis = analyzeLast5Sequence(allResults);
 
-        if (seqAnalysis !== null) {
+        if (seqAnalysis !== null && seqAnalysis.mode === "DRAGON") {
             streakLockCount = 0;
             lockedPrediction = null;
             return generateOutput(seqAnalysis.next, allNumbers);
@@ -112,25 +114,8 @@ function advancedPatternEngine(history, currentConsecLosses) {
             return generateOutput(lockedPrediction, allNumbers);
         }
 
-        // 3️⃣ 50-PAGE HISTORICAL MATCHING
-        let scoreB = 0;
-        let scoreS = 0;
-
-        let last5Pattern = allResults.slice(0, 5).join("");
-        let patternMatched = false;
-
-        for (let i = 1; i < allResults.length - 6; i++) {
-            let historical5 = allResults.slice(i, i + 5).join("");
-            if (last5Pattern === historical5) {
-                patternMatched = true;
-                let nextOutcome = allResults[i - 1];
-                if (nextOutcome === "B") scoreB += 4;
-                if (nextOutcome === "S") scoreS += 4;
-            }
-        }
-
-        let predResult = scoreS > scoreB ? "SMALL" : "BIG";
-        return generateOutput(predResult, allNumbers);
+        // Return prediction calculated from Last 5 Sequence
+        return generateOutput(seqAnalysis.next, allNumbers);
 
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
@@ -138,7 +123,7 @@ function advancedPatternEngine(history, currentConsecLosses) {
     }
 }
 
-// Helper to generate Number & Color output mapping
+// Helper to generate Number & Color output mapping (SAME LOGIC KEPT)
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     let num1 = allNumbers[0];
@@ -233,7 +218,6 @@ async function fetchWinGoData() {
                 let pred = advancedPatternEngine(list, consecLosses);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
-                // ⚡ Updated Title with WinGo 30S
                 let msg = "👑 **KING PREDICTION**\n" +
                           "⚡ **WinGo 30S** ⚡\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -258,7 +242,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] WinGo 30S Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] WinGo 30S 5-Sequence Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -266,6 +250,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Fast Engine Active...");
-// ⚡ Reduced fetch interval to 5 seconds for fast 30s period tracking
+console.log("WinGo 30S 5-Sequence Engine Active...");
 setInterval(fetchWinGoData, 5000);
