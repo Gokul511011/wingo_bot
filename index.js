@@ -2,11 +2,11 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server Setup (Render 24/7 Keeping Alive & Port Binding)
+// Express Server Setup (Render 24/7 Keeping Alive)
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.get('/', (req, res) => res.send('WinGo 30S High Accuracy Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Hourly Report Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`);
@@ -30,21 +30,28 @@ let lastPredictedNumbers = [];
 let lastPredictedColorType = null;
 let lastPredictedPeriod = null;
 
+// Overall Stats
 let totalWins = 0;
 let totalLosses = 0;
-let consecutiveLosses = 0; // Loss Streak Counter
 let maintenanceLevel = 1;
 
-// Level Investment Amounts
+// 60-Data Hourly Tracking Variables
+let hourlyRoundCount = 0;
+let hourlyWins = 0;
+let hourlyLosses = 0;
+let hourlyNetProfit = 0; // Total Net Money Profit
+let levelWinStats = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+
+// Investment & Return Matrix (Assuming 1.96x payout)
 const levelAmounts = {
-    1: "₹1",
-    2: "₹3",
-    3: "₹9",
-    4: "₹27",
-    5: "₹81",
-    6: "₹243",
-    7: "₹729",
-    8: "₹1300"
+    1: 1,
+    2: 3,
+    3: 9,
+    4: 27,
+    5: 81,
+    6: 243,
+    7: 729,
+    8: 1300
 };
 
 function getActualColorInfo(num) {
@@ -66,20 +73,13 @@ function highAccuracyEngine(history) {
         let countB = last15.filter(x => x === "BIG").length;
         let countS = last15.length - countB;
 
-        // 1. DRAGON PATTERN
         if (last15[0] === last15[1] && last15[1] === last15[2]) {
             predResult = last15[0];
-        } 
-        // 2. 1-2 STREAK BREAK PATTERN
-        else if (last15[1] === last15[2] && last15[0] !== last15[1]) {
+        } else if (last15[1] === last15[2] && last15[0] !== last15[1]) {
             predResult = last15[0];
-        }
-        // 3. ZIG-ZAG PATTERN
-        else if (last15[0] !== last15[1] && last15[1] !== last15[2] && last15[2] !== last15[3]) {
+        } else if (last15[0] !== last15[1] && last15[1] !== last15[2] && last15[2] !== last15[3]) {
             predResult = last15[0] === "BIG" ? "SMALL" : "BIG";
-        } 
-        // 4. TREND DOMINANCE FILTER
-        else {
+        } else {
             if (countB >= 9) {
                 predResult = "BIG";
             } else if (countS >= 9) {
@@ -89,7 +89,6 @@ function highAccuracyEngine(history) {
             }
         }
 
-        // 5. HIGH PROBABILITY LUCKY NUMBERS
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let recent20 = allNumbers.slice(0, 20);
         let freqMap = {};
@@ -141,14 +140,27 @@ async function fetchWinGoData() {
             let cheerMsgText = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+                hourlyRoundCount++;
                 let isResultHit = (lastPredictedResult === actualResult);
                 let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
                 let isColorHit = (lastPredictedColorType === actualColorInfo.type);
 
+                let currentStake = levelAmounts[maintenanceLevel] || 1;
+
                 if (isResultHit) {
                     totalWins++;
-                    consecutiveLosses = 0; // Reset consecutive loss streak on Win
-                    maintenanceLevel = 1;
+                    hourlyWins++;
+                    
+                    // Win Payout Calc (Approx 1.96x return -> Profit = stake * 0.96)
+                    let profitGain = currentStake * 0.96;
+                    hourlyNetProfit += profitGain;
+
+                    // Track Level Win
+                    if (levelWinStats[maintenanceLevel] !== undefined) {
+                        levelWinStats[maintenanceLevel]++;
+                    }
+
+                    maintenanceLevel = 1; // Reset Level
                     
                     if (isNumberHit && isColorHit) {
                         cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColorInfo.type} JACKPOT WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
@@ -157,7 +169,11 @@ async function fetchWinGoData() {
                     }
                 } else {
                     totalLosses++;
-                    consecutiveLosses++; // Increment loss streak
+                    hourlyLosses++;
+
+                    // Deduct Loss Stake Amount
+                    hourlyNetProfit -= currentStake;
+
                     maintenanceLevel++;
                     if (maintenanceLevel > 8) maintenanceLevel = 1;
                     cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
@@ -166,7 +182,7 @@ async function fetchWinGoData() {
 
             if (nextPeriod !== lastSentPeriod) {
                 let pred = highAccuracyEngine(list);
-                let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
+                let currentAmount = "₹" + (levelAmounts[maintenanceLevel] || 1);
 
                 let msg = "👑 **KING PREDICTION**\n" +
                           "⚡ **WinGo 30S** ⚡\n" +
@@ -183,8 +199,7 @@ async function fetchWinGoData() {
                 }
 
                 msg += "🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
-                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n" +
-                       "⚠️ **CURRENT LOSS STREAK:** **" + consecutiveLosses + " Level(s) Loss**\n\n" +
+                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
                 await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
@@ -194,6 +209,41 @@ async function fetchWinGoData() {
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
                 lastPredictedColorType = pred.mainColorType;
+
+                // 📊 60 ROUNDS (1 HOUR) HOURLY REPORT SUMMARY
+                if (hourlyRoundCount >= 60) {
+                    let nowStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+                    
+                    let summaryMsg = "📊 **HOURLY PERFORMANCE REPORT (60 DATA)** 📊\n" +
+                                     "📅 **DATE & TIME:** `" + nowStr + "`\n" +
+                                     "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                     "✅ **TOTAL WINS:** **" + hourlyWins + "** / 60\n" +
+                                     "❌ **TOTAL LOSSES:** **" + hourlyLosses + "** / 60\n" +
+                                     "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                     "🎯 **LEVEL-WISE WIN BREAKDOWN:**\n" +
+                                     "• Level 1 Wins: **" + levelWinStats[1] + "**\n" +
+                                     "• Level 2 Wins: **" + levelWinStats[2] + "**\n" +
+                                     "• Level 3 Wins: **" + levelWinStats[3] + "**\n" +
+                                     "• Level 4 Wins: **" + levelWinStats[4] + "**\n" +
+                                     "• Level 5 Wins: **" + levelWinStats[5] + "**\n" +
+                                     "• Level 6 Wins: **" + levelWinStats[6] + "**\n" +
+                                     "• Level 7 Wins: **" + levelWinStats[7] + "**\n" +
+                                     "• Level 8 Wins: **" + levelWinStats[8] + "**\n" +
+                                     "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                     "💰 **ESTIMATED NET PROFIT:** **₹" + hourlyNetProfit.toFixed(2) + "**\n" +
+                                     "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                     "🔥 *Pattern Engine Auto-Calculated for 60 Rounds.*";
+
+                    await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+
+                    // Reset Hourly Counter for Next 60 Data
+                    hourlyRoundCount = 0;
+                    hourlyWins = 0;
+                    hourlyLosses = 0;
+                    hourlyNetProfit = 0;
+                    levelWinStats = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+                }
+
                 console.log("[SUCCESS] Updated Prediction Sent: " + nextPeriod);
             }
         }
