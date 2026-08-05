@@ -4,14 +4,16 @@ const express = require('express');
 
 // Express Server for Render Deployment
 const app = express();
-const PORT = process.env.PORT || 10000;
+const PORT = process process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('WinGo 30S High Precision Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = 'c725f6d2ecb43122c28b14448f9c0c61'; 
+
+// Your ScrapingAnt API Key
+const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -93,7 +95,7 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // --- HIGH ACCURACY NUMBER PREDICTION ---
+        // HIGH ACCURACY NUMBER PREDICTION
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
@@ -126,12 +128,13 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL) + "&render=false&premium=false";
+        // ScrapingAnt Endpoint with browser=false (Consume 1 Credit per Request)
+        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
         const response = await axios.get(scraperUrl, { timeout: 8000 });
+        
         let data = response.data;
-
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) {}
+        if (data && data.content) {
+            try { data = JSON.parse(data.content); } catch (e) {}
         }
 
         let list = data?.data?.list || data?.list || data;
@@ -157,19 +160,15 @@ async function fetchWinGoData() {
                     totalWins++;
                     consecLosses = 0;
 
-                    // 1. All 3 Hit
                     if (isResultHit && isNumberHit && isColorHit) {
                         dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
                     } 
-                    // 2. Result + Number Hit
                     else if (isResultHit && isNumberHit) {
                         dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " JACKPOT WINNER** 🏆";
                     } 
-                    // 3. Result + Color Hit
                     else if (isResultHit && isColorHit) {
-                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " SUPER CONGRATULATIONS** 🏆";
+                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " WINNER CONGRATULATIONS** 🏆";
                     } 
-                    // 4. Result Only Hit
                     else {
                         dynamicStatusMsg = "🏆 **" + actualResult + " WIN** 🏆";
                     }
@@ -181,7 +180,6 @@ async function fetchWinGoData() {
                     totalLosses++;
                     consecLosses++;
 
-                    // Loss வந்தால் "LOSS" என்று போடாமல் Result மட்டும் காட்டும்
                     dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
 
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
@@ -233,7 +231,6 @@ async function fetchWinGoData() {
                     msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                // Simple Wins & Losses Summary
                 msg += "🏆 **WINS:** " + totalWins + "\n" +
                        "💔 **LOSSES:** " + totalLosses + "\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n\n" +
