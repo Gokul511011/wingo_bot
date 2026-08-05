@@ -98,7 +98,6 @@ function deepHistoryPatternEngine(history) {
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        // Recent 50 draw weightage for precise number calculation
         for (let i = 0; i < Math.min(50, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
@@ -149,14 +148,31 @@ async function fetchWinGoData() {
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 let isResultHit = (lastPredictedResult === actualResult);
+                let isNumberHit = lastPredictedNumbers.includes(actualNum);
+                let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
+
                 let currentLevelExecuted = maintenanceLevel;
 
                 if (isResultHit) {
                     totalWins++;
                     consecLosses = 0;
 
-                    // Winner Winner Message
-                    dynamicStatusMsg = "🏆 **CONGRATULATIONS** 🏆";
+                    // 1. All 3 Hit
+                    if (isResultHit && isNumberHit && isColorHit) {
+                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
+                    } 
+                    // 2. Result + Number Hit
+                    else if (isResultHit && isNumberHit) {
+                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " JACKPOT WINNER** 🏆";
+                    } 
+                    // 3. Result + Color Hit
+                    else if (isResultHit && isColorHit) {
+                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " SUPER CONGRATULATIONS** 🏆";
+                    } 
+                    // 4. Result Only Hit
+                    else {
+                        dynamicStatusMsg = "🏆 **" + actualResult + " WIN** 🏆";
+                    }
 
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
@@ -164,9 +180,9 @@ async function fetchWinGoData() {
                 } else {
                     totalLosses++;
                     consecLosses++;
-                    
-                    // Cheer Up Message for Loss
-                    dynamicStatusMsg = "💪 **CHEER UP! BETTER LUCK NEXT TIME!** 💥";
+
+                    // Loss வந்தால் "LOSS" என்று போடாமல் Result மட்டும் காட்டும்
+                    dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
 
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                     maintenanceLevel++;
@@ -181,7 +197,6 @@ async function fetchWinGoData() {
                     if (maintenanceLevel > 8) maintenanceLevel = 1;
                 }
 
-                // Internal tracking up to 60 predictions
                 if (prediction60History.length > 60) {
                     prediction60History.pop();
                 }
@@ -218,7 +233,7 @@ async function fetchWinGoData() {
                     msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                // Simple Wins & Losses Summary (Report / Breakdown Hidden)
+                // Simple Wins & Losses Summary
                 msg += "🏆 **WINS:** " + totalWins + "\n" +
                        "💔 **LOSSES:** " + totalLosses + "\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n\n" +
