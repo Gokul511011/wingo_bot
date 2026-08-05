@@ -11,7 +11,7 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = 'c725f6d2ecb43122c28b14448f9c0c61'; // Updated New API Key
+const SCRAPER_API_KEY = 'c725f6d2ecb43122c28b14448f9c0c61'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -28,24 +28,21 @@ let totalWins = 0;
 let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
-let cooldownCounter = 0; // Tracks 5 predictions cooldown after 6 losses
+let cooldownCounter = 0;
 
-// 60 Predictions History Tracker Array
 let prediction60History = [];
 
-// 8 Level Bet Plan with Investment & Win Payout Values
 const levelData = {
     1: { name: "₹10", val: 10, winPayout: 19.60 },
-    2: { name: "₹25", val: 25, winPayout: 49.00 },
-    3: { name: "₹60", val: 60, winPayout: 117.60 },
-    4: { name: "₹140", val: 140, winPayout: 274.40 },
-    5: { name: "₹320", val: 320, winPayout: 627.20 },
-    6: { name: "₹700", val: 700, winPayout: 1372.00 },
-    7: { name: "₹1500", val: 1500, winPayout: 2940.00 },
-    8: { name: "₹3200", val: 3200, winPayout: 6272.00 }
+    2: { name: "₹30", val: 30, winPayout: 58.80 },
+    3: { name: "₹90", val: 90, winPayout: 176.40 },
+    4: { name: "₹270", val: 270, winPayout: 529.20 },
+    5: { name: "₹810", val: 810, winPayout: 1587.60 },
+    6: { name: "₹2430", val: 2430, winPayout: 4762.80 },
+    7: { name: "₹7290", val: 7290, winPayout: 14288.40 },
+    8: { name: "₹21870", val: 21870, winPayout: 42865.20 }
 };
 
-// 🎯 DEEP HISTORY PATTERN ENGINE
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -54,19 +51,15 @@ function deepHistoryPatternEngine(history) {
         let recentPattern = allResults.slice(0, 4).join(""); 
         let predResult = "BIG";
 
-        // 1. Dragon Pattern
         if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 2. Zig-Zag Pattern
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 3. Double Pattern
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Deep History Matching (50 to 100 Pages Lookup)
         else {
             let scoreB = 0;
             let scoreS = 0;
@@ -85,7 +78,6 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // 🔢 SMART NUMBER PATTERN ENGINE (First 3 Numbers Sequence Matching)
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let recent3Nums = allNumbers.slice(0, 3);
         let matchedNumbers = [];
@@ -127,7 +119,8 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        // ⚡ OPTIMIZED FOR 1 CREDIT PER REQUEST: Added render=false & premium=false
+        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL) + "&render=false&premium=false";
         const response = await axios.get(scraperUrl, { timeout: 8000 });
         let data = response.data;
 
@@ -176,7 +169,6 @@ async function fetchWinGoData() {
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                     maintenanceLevel++;
 
-                    // 🛑 6-Continuous Losses Cooldown Trigger
                     if (consecLosses >= 6) {
                         cooldownCounter = 5;
                         consecLosses = 0;
@@ -193,7 +185,6 @@ async function fetchWinGoData() {
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                // If in cooldown mode after 6 losses
                 if (cooldownCounter > 0) {
                     cooldownCounter--;
                     console.log(`[STOP SYSTEM] Cooldown active. Remaining predictions to skip: ${cooldownCounter}`);
@@ -220,7 +211,6 @@ async function fetchWinGoData() {
                     msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                // 📊 60 Predictions & Overall Net Profit Report
                 let historyLen = prediction60History.length;
                 let wins60 = prediction60History.filter(x => x.status === "WIN").length;
                 let losses60 = prediction60History.filter(x => x.status === "LOSS").length;
@@ -274,280 +264,5 @@ async function fetchWinGoData() {
     }
 }
 
-setInterval(fetchWinGoData, 3000);const axios = require('axios');
-const TelegramBot = require('node-telegram-bot-api');
-const express = require('express');
-
-// Express Server
-const app = express();
-const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Advanced Profit & Loss Engine Active!'));
-app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
-
-// Config
-const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
-const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
-
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
-const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
-
-const bot = new TelegramBot(BOT_TOKEN, { polling: false });
-
-let lastSentPeriod = "";
-let lastPredictedResult = null;
-let lastPredictedNumbers = [];
-let lastPredictedColor = "";
-let lastPredictedPeriod = null;
-
-let totalWins = 0;
-let totalLosses = 0;
-let consecLosses = 0;
-let maintenanceLevel = 1;
-let cooldownCounter = 0; // 6-level loss stop system tracker
-
-// 60 Predictions History Array
-let prediction60History = [];
-
-// 8 Level Amounts & Values for Net Profit Calculation
-const levelData = {
-    1: { name: "₹10", val: 10, winPayout: 19.60 },
-    2: { name: "₹25", val: 25, winPayout: 49.00 },
-    3: { name: "₹60", val: 60, winPayout: 117.60 },
-    4: { name: "₹140", val: 140, winPayout: 274.40 },
-    5: { name: "₹320", val: 320, winPayout: 627.20 },
-    6: { name: "₹700", val: 700, winPayout: 1372.00 },
-    7: { name: "₹1500", val: 1500, winPayout: 2940.00 },
-    8: { name: "₹3200", val: 3200, winPayout: 6272.00 }
-};
-
-// 🎯 DEEP HISTORY PATTERN ENGINE
-function deepHistoryPatternEngine(history) {
-    try {
-        let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
-
-        let recentPattern = allResults.slice(0, 4).join(""); 
-        let predResult = "BIG";
-
-        // 1. Dragon Pattern
-        if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
-            predResult = allResults[0] === "B" ? "BIG" : "SMALL";
-        } 
-        // 2. Zig-Zag Pattern
-        else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
-            predResult = allResults[0] === "B" ? "SMALL" : "BIG";
-        }
-        // 3. Double Pattern
-        else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
-            predResult = allResults[0] === "B" ? "SMALL" : "BIG";
-        }
-        // 4. Page 1 & Deep History Search
-        else {
-            let scoreB = 0;
-            let scoreS = 0;
-
-            for (let i = 1; i < allResults.length - 5; i++) {
-                let historicalSeq = allResults.slice(i, i + 4).join("");
-                if (recentPattern === historicalSeq) {
-                    let nextItem = allResults[i - 1];
-                    if (nextItem === "B") scoreB++;
-                    if (nextItem === "S") scoreS++;
-                }
-            }
-
-            if (scoreB > scoreS) predResult = "BIG";
-            else if (scoreS > scoreB) predResult = "SMALL";
-            else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
-        }
-
-        // 🔢 SMART NUMBER PATTERN ENGINE
-        let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let recent3Nums = allNumbers.slice(0, 3);
-        let matchedNumbers = [];
-
-        for (let i = 1; i < allNumbers.length - 4; i++) {
-            let matches = 0;
-            if (allNumbers[i] === recent3Nums[0]) matches++;
-            if (allNumbers[i + 1] === recent3Nums[1]) matches++;
-            if (allNumbers[i + 2] === recent3Nums[2]) matches++;
-
-            if (matches >= 2) { 
-                let historicalNextNum = allNumbers[i - 1];
-                if (candidateNums.includes(historicalNextNum) && !matchedNumbers.includes(historicalNextNum)) {
-                    matchedNumbers.push(historicalNextNum);
-                }
-            }
-            if (matchedNumbers.length >= 2) break;
-        }
-
-        if (matchedNumbers.length < 2) {
-            let defaultPicks = candidateNums.filter(n => !matchedNumbers.includes(n));
-            matchedNumbers.push(...defaultPicks.slice(0, 2 - matchedNumbers.length));
-        }
-
-        let numbersStr = matchedNumbers.join(", ");
-        let mainColor = predResult === "BIG" ? "GREEN" : "RED";
-        let colorStr = mainColor === "GREEN" ? "🟢 GREEN" : "🔴 RED";
-        if (matchedNumbers.includes(0) || matchedNumbers.includes(5)) {
-            colorStr += " / 🟣 VIOLET";
-        }
-
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, mainColor };
-
-    } catch (e) {
-        console.error("Pattern Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [7, 8], numbersStr: "7, 8", colorStr: "🟢 GREEN", mainColor: "GREEN" };
-    }
-}
-
-async function fetchWinGoData() {
-    try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
-        const response = await axios.get(scraperUrl, { timeout: 8000 });
-        let data = response.data;
-
-        if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch (e) {}
-        }
-
-        let list = data?.data?.list || data?.list || data;
-
-        if (Array.isArray(list) && list.length > 0) {
-            let lastItem = list[0];
-            let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
-            let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-            let actualColor = (actualNum === 0 || actualNum === 5) ? "VIOLET" : (actualNum >= 5 ? "GREEN" : "RED");
-            let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
-            
-            let nextPeriod = String(BigInt(actualPeriod) + 1n);
-            let dynamicWinMsg = "";
-
-            if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
-                let isResultHit = (lastPredictedResult === actualResult);
-                let isNumberHit = lastPredictedNumbers.includes(actualNum);
-                let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
-
-                let currentLevelExecuted = maintenanceLevel;
-
-                if (isResultHit) {
-                    totalWins++;
-                    consecLosses = 0;
-
-                    let winParts = [];
-                    if (isResultHit) winParts.push(actualResult + " WIN");
-                    if (isNumberHit) winParts.push(actualNum + " WIN");
-                    if (isColorHit) winParts.push(actualColor + " WIN");
-                    if (isNumberHit) winParts.push("JACKPOT NUMBERS");
-
-                    dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
-
-                    prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
-                    maintenanceLevel = 1;
-
-                } else {
-                    totalLosses++;
-                    consecLosses++;
-                    
-                    prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-                    maintenanceLevel++;
-
-                    // 🛑 6-LEVEL LOSS PROTECTION TRIGGER
-                    if (consecLosses >= 6) {
-                        cooldownCounter = 5; // Pause next 5 predictions
-                        consecLosses = 0;
-                        maintenanceLevel = 1;
-                        await bot.sendMessage(CHANNEL_ID, "⚠️ **6 CONTINUOUS LOSSES DETECTED!**\n🛑 Bot is taking a break for 5 predictions to prevent bad pattern loss.", { parse_mode: 'Markdown' });
-                    }
-
-                    if (maintenanceLevel > 8) maintenanceLevel = 1;
-                }
-
-                if (prediction60History.length > 60) {
-                    prediction60History.pop();
-                }
-            }
-
-            if (nextPeriod !== lastSentPeriod) {
-                // If bot is in 5-period stop mode
-                if (cooldownCounter > 0) {
-                    cooldownCounter--;
-                    console.log(`[STOP SYSTEM] Skipping prediction. Remaining cooldown: ${cooldownCounter}`);
-                    lastSentPeriod = nextPeriod;
-                    return;
-                }
-
-                let pred = deepHistoryPatternEngine(list);
-                let currentLevelInfo = levelData[maintenanceLevel] || levelData[1];
-                let nextLevelInfo = levelData[maintenanceLevel + 1] || levelData[1];
-
-                let msg = "👑 **KING PREDICTION**\n" +
-                          "⚡ **WinGo 30S** ⚡\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                          "🎯 **TARGET:** **" + pred.predResult + "**\n" +
-                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                          "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentLevelInfo.name + ")**\n" +
-                          "👉 **NEXT BET:** **Level " + (maintenanceLevel + 1) + " (" + nextLevelInfo.name + ")** *(If Level " + maintenanceLevel + " Losses)*\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n";
-
-                if (dynamicWinMsg !== "") {
-                    msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
-                }
-
-                // 📊 OVERALL NET PROFIT & LEVEL REPORT
-                let historyLen = prediction60History.length;
-                let wins60 = prediction60History.filter(x => x.status === "WIN").length;
-                let losses60 = prediction60History.filter(x => x.status === "LOSS").length;
-
-                let levelCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
-                let netProfit = 0;
-
-                prediction60History.forEach(item => {
-                    let lvl = item.level;
-                    let info = levelData[lvl] || levelData[1];
-
-                    if (item.status === "WIN") {
-                        if (levelCounts[lvl] !== undefined) levelCounts[lvl]++;
-                        netProfit += (info.winPayout - info.val);
-                    } else if (item.status === "LOSS") {
-                        netProfit -= info.val;
-                    }
-                });
-
-                let profitSign = netProfit >= 0 ? "+₹" : "-₹";
-
-                msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
-                       "━━━━━━━━━━━━━━━━━━━━━\n" +
-                       "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
-                       "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n" +
-                       "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n\n" +
-                       "🎯 **LEVEL WINS BREAKDOWN:**\n" +
-                       "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
-                       "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
-                       "• **Level 3 Wins:** " + levelCounts[3] + "\n" +
-                       "• **Level 4 Wins:** " + levelCounts[4] + "\n" +
-                       "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
-                       "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
-                       "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
-                       "• **Level 8 Wins:** " + levelCounts[8] + "\n" +
-                       "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                       "🔗 **Register Link:**\n" + REGISTER_LINK;
-
-                await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
-
-                lastSentPeriod = nextPeriod;
-                lastPredictedPeriod = nextPeriod;
-                lastPredictedResult = pred.predResult;
-                lastPredictedNumbers = pred.targetNumbers;
-                lastPredictedColor = pred.mainColor;
-                console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
-            }
-        }
-    } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
-    }
-}
-
-setInterval(fetchWinGoData, 3000);
+// ⏱️ Credits சேமிக்க Fetch Interval 8 வினாடிகளாக அதிகரிக்கப்பட்டுள்ளது (30s Game-க்கு போதுமானது)
+setInterval(fetchWinGoData, 8000);
