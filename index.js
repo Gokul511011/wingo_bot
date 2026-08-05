@@ -36,7 +36,7 @@ const levelAmounts = {
     1: "₹10", 2: "₹30", 3: "₹90", 4: "₹270", 5: "₹810", 6: "₹2430", 7: "₹7290"
 };
 
-// 🎯 DEEP HISTORY PATTERN ENGINE (Dragon, Mirror, ZigZag, Double Search)
+// 🎯 DEEP HISTORY PATTERN ENGINE
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -45,15 +45,15 @@ function deepHistoryPatternEngine(history) {
         let recentPattern = allResults.slice(0, 4).join(""); 
         let predResult = "BIG";
 
-        // 1. Dragon Pattern (3+ Same outcome)
+        // 1. Dragon Pattern
         if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 2. Zig-Zag Pattern Check (B-S-B-S)
+        // 2. Zig-Zag Pattern Check
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 3. Double Pattern Check (BB SS BB)
+        // 3. Double Pattern Check
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
@@ -76,7 +76,7 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // 🔢 SMART NUMBER PATTERN ENGINE (First 3 Numbers Match in History)
+        // 🔢 SMART NUMBER PATTERN ENGINE
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let recent3Nums = allNumbers.slice(0, 3);
         let matchedNumbers = [];
@@ -149,7 +149,6 @@ async function fetchWinGoData() {
                     totalWins++;
                     consecLosses = 0;
 
-                    // தமிழ் பாணியில் வெற்றி அடைந்ததை மட்டும் சேர்க்கும் லாஜிக்
                     let winParts = [];
                     if (isResultHit) winParts.push(actualResult + " WIN");
                     if (isNumberHit) winParts.push(actualNum + " WIN");
@@ -158,6 +157,7 @@ async function fetchWinGoData() {
 
                     dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
 
+                    // Store Win & Level details
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
 
@@ -170,6 +170,7 @@ async function fetchWinGoData() {
                     if (maintenanceLevel > 7) maintenanceLevel = 1;
                 }
 
+                // Keep only last 60 records
                 if (prediction60History.length > 60) {
                     prediction60History.pop();
                 }
@@ -193,12 +194,32 @@ async function fetchWinGoData() {
                     msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                let recent60Wins = prediction60History.filter(x => x.status === "WIN").length;
-                let recent60Losses = prediction60History.filter(x => x.status === "LOSS").length;
+                // 📊 60 PREDICTIONS LEVEL-WISE SUMMARY LOGIC
+                let historyLen = prediction60History.length;
+                let wins60 = prediction60History.filter(x => x.status === "WIN").length;
+                let losses60 = prediction60History.filter(x => x.status === "LOSS").length;
 
-                msg += "\n📊 **LAST " + prediction60History.length + " PREDICTIONS:** " + recent60Wins + "W / " + recent60Losses + "L\n" +
-                       "🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
-                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n\n" +
+                // Level Count Calculation
+                let levelCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+                prediction60History.forEach(item => {
+                    if (item.status === "WIN" && item.level >= 1 && item.level <= 7) {
+                        levelCounts[item.level]++;
+                    }
+                });
+
+                msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
+                       "━━━━━━━━━━━━━━━━━━━━━\n" +
+                       "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
+                       "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n\n" +
+                       "🎯 **LEVEL WINS BREAKDOWN:**\n" +
+                       "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
+                       "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
+                       "• **Level 3 Wins:** " + levelCounts[3] + "\n" +
+                       "• **Level 4 Wins:** " + levelCounts[4] + "\n" +
+                       "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
+                       "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
+                       "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
+                       "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
                 await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
