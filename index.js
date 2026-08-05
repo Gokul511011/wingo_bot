@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S High Precision Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -130,19 +130,16 @@ async function fetchWinGoData() {
     try {
         console.log('[SYSTEM] Fetching data via ScrapingAnt...');
         
-        // ScrapingAnt call optimized for 1 credit per request and JSON parsing
         const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&proxy_type=datacenter`;
 
-        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        const response = await axios.get(scraperUrl, { timeout: 12000 });
         
-        let data = response.data;
-        let content = data.content || data;
-
-        if (typeof content === 'string') {
-            try { content = JSON.parse(content); } catch (e) {}
+        let rawContent = response.data.content || response.data;
+        if (typeof rawContent === 'string') {
+            try { rawContent = JSON.parse(rawContent); } catch (e) {}
         }
 
-        let list = content?.data?.list || content?.list || (Array.isArray(content) ? content : null);
+        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
             console.log('[SYSTEM] Received empty list from ScrapingAnt.');
@@ -263,5 +260,5 @@ async function fetchWinGoData() {
     }
 }
 
-// Check every 8 seconds
-setInterval(fetchWinGoData, 8000);
+// Check interval set to 10s to prevent concurrency limit (1 request limit)
+setInterval(fetchWinGoData, 10000);
