@@ -29,7 +29,7 @@ let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
 let cooldownCounter = 0;
-let totalProfitLoss = 0; // Profit/Loss Tracking
+let totalProfitLoss = 0;
 
 let prediction60History = [];
 
@@ -44,6 +44,20 @@ const levelData = {
     7: { name: "₹450", val: 450 },
     8: { name: "₹1350", val: 1350 }
 };
+
+// Exact Color & Number Mapping Function
+function getNumberColor(num) {
+    if ([2, 4, 6, 8].includes(num)) {
+        return "RED";
+    } else if ([1, 3, 7, 9].includes(num)) {
+        return "GREEN";
+    } else if (num === 0) {
+        return "RED / VIOLET";
+    } else if (num === 5) {
+        return "GREEN / VIOLET";
+    }
+    return "RED";
+}
 
 function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
@@ -108,10 +122,13 @@ function deepHistoryPatternEngine(history) {
         let matchedNumbers = sortedNumbers.slice(0, 2);
 
         let numbersStr = matchedNumbers.join(", ");
+        
         let mainColor = predResult === "BIG" ? "GREEN" : "RED";
         let colorStr = mainColor === "GREEN" ? "🟢 GREEN" : "🔴 RED";
-        if (matchedNumbers.includes(0) || matchedNumbers.includes(5)) {
-            colorStr += " / 🟣 VIOLET";
+        if (matchedNumbers.includes(0)) {
+            colorStr = "🔴 RED / 🟣 VIOLET";
+        } else if (matchedNumbers.includes(5)) {
+            colorStr = "🟢 GREEN / 🟣 VIOLET";
         }
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, mainColor };
@@ -162,7 +179,7 @@ async function fetchWinGoData() {
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-        let actualColor = (actualNum === 0 || actualNum === 5) ? "VIOLET" : (actualNum >= 5 ? "GREEN" : "RED");
+        let actualColor = getNumberColor(actualNum); // துல்லியமான கலர் மேப்பிங்
         let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
         
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -171,7 +188,7 @@ async function fetchWinGoData() {
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
             let isResultHit = (lastPredictedResult === actualResult);
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
-            let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
+            let isColorHit = actualColor.includes(lastPredictedColor);
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = levelData[currentLevelExecuted]?.val || 1;
@@ -180,21 +197,20 @@ async function fetchWinGoData() {
                 totalWins++;
                 consecLosses = 0;
 
-                // Win Profit Calculation (approx 0.98x payout)
                 let winAmount = currentBetVal * 0.98;
                 totalProfitLoss += winAmount;
 
                 if (isResultHit && isNumberHit && isColorHit) {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
+                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " JACKPOT WINNERS** 🏆";
                 } 
                 else if (isResultHit && isNumberHit) {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " JACKPOT WINNER** 🏆";
+                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
                 } 
                 else if (isResultHit && isColorHit) {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " WINNER CONGRATULATIONS** 🏆";
+                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " WINNER CONGRATULATIONS** 🏆";
                 } 
                 else {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " WIN** 🏆";
+                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
                 }
 
                 prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
@@ -204,10 +220,9 @@ async function fetchWinGoData() {
                 totalLosses++;
                 consecLosses++;
 
-                // Loss Deduction
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
+                dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
 
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 maintenanceLevel++;
