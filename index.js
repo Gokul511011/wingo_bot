@@ -107,7 +107,6 @@ async function fetchWinGoData() {
             let lastItem = list[0];
             let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
             let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-            let actualColor = actualNum >= 5 ? "GREEN" : "RED";
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -119,7 +118,8 @@ async function fetchWinGoData() {
                 if (isResultHit) {
                     totalWins++;
                     maintenanceLevel = 1;
-                    cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColor} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    // Result Format: BIG 7 WIN / SMALL 2 WIN
+                    cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
                 } else {
                     totalLosses++;
                     maintenanceLevel++;
