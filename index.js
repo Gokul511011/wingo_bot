@@ -5,15 +5,12 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Scrape.do Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S High-Accuracy Safe Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-
-// ⚡ UPDATED SCRAPE.DO API TOKEN
-const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36';
 
 // ⚡ 30S WinGo API Endpoint
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -31,8 +28,7 @@ let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
 
-let streakLockCount = 0;
-let lockedPrediction = null;
+let skipCounter = 0; // Smart Loss Skip Tracking
 
 const levelAmounts = {
     1: "₹10",
@@ -44,72 +40,61 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 LAST 5 RESULTS PATTERN & DRAGON CALCULATION ENGINE
-function analyzeLast5Sequence(resultsAll) {
-    let last5 = resultsAll.slice(0, 5);
+const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36'
+];
 
-    // 🐉 1. DRAGON PATTERN CHECK
-    let dragonCount = 1;
-    for (let i = 0; i < last5.length - 1; i++) {
-        if (last5[i] === last5[i + 1]) dragonCount++;
-        else break;
-    }
-
-    if (dragonCount >= 3) {
-        return { mode: "DRAGON", next: last5[0] === "B" ? "BIG" : "SMALL" };
-    }
-
-    // ⚡ 2. LAST 5 SEQUENCE PATTERN MATCHING ACROSS 50 PAGES HISTORY
-    let pattern5Str = last5.join("");
-    let scoreB = 0;
-    let scoreS = 0;
-
-    for (let i = 1; i < resultsAll.length - 6; i++) {
-        let historical5 = resultsAll.slice(i, i + 5).join("");
-        if (pattern5Str === historical5) {
-            let nextOutcome = resultsAll[i - 1];
-            if (nextOutcome === "B") scoreB += 5;
-            if (nextOutcome === "S") scoreS += 5;
-        }
-    }
-
-    if (scoreB > scoreS) return { mode: "PATTERN_MATCH", next: "BIG" };
-    if (scoreS > scoreB) return { mode: "PATTERN_MATCH", next: "SMALL" };
-
-    if (last5[0] !== last5[1] && last5[1] !== last5[2] && last5[2] !== last5[3]) {
-        return { mode: "ZIGZAG", next: last5[0] === "B" ? "SMALL" : "BIG" };
-    }
-
-    return { mode: "REVERSE_FLOW", next: last5[0] === "B" ? "SMALL" : "BIG" };
+function getRandomUserAgent() {
+    return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
-// 🧠 HIGH-PRECISION PATTERN & NUMBER SEARCH ENGINE
-function advancedPatternEngine(history, currentConsecLosses) {
+// 🎯 HIGH-PRECISION DOUBLE FILTER ENGINE
+function safePatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let seqAnalysis = analyzeLast5Sequence(allResults);
+        let last5 = allResults.slice(0, 5);
 
-        if (seqAnalysis !== null && seqAnalysis.mode === "DRAGON") {
-            streakLockCount = 0;
-            lockedPrediction = null;
-            return generateOutput(seqAnalysis.next, allNumbers);
+        // 🐉 1. DRAGON PATTERN CHECK
+        let dragonCount = 1;
+        for (let i = 0; i < last5.length - 1; i++) {
+            if (last5[i] === last5[i + 1]) dragonCount++;
+            else break;
         }
 
-        if (currentConsecLosses >= 2) {
-            if (streakLockCount === 0) {
-                lockedPrediction = allResults[0] === "B" ? "BIG" : "SMALL";
-                streakLockCount = 5;
+        if (dragonCount >= 3) {
+            let predRes = last5[0] === "B" ? "BIG" : "SMALL";
+            return generateOutput(predRes, allNumbers);
+        }
+
+        // ⚡ 2. 50-PAGE HISTORICAL PATTERN MATCH
+        let pattern5Str = last5.join("");
+        let scoreB = 0;
+        let scoreS = 0;
+
+        for (let i = 1; i < allResults.length - 6; i++) {
+            let historical5 = allResults.slice(i, i + 5).join("");
+            if (pattern5Str === historical5) {
+                let nextOutcome = allResults[i - 1];
+                if (nextOutcome === "B") scoreB += 5;
+                if (nextOutcome === "S") scoreS += 5;
             }
         }
 
-        if (streakLockCount > 0 && lockedPrediction) {
-            streakLockCount--;
-            return generateOutput(lockedPrediction, allNumbers);
-        }
+        let patternNext = scoreB >= scoreS ? "BIG" : "SMALL";
 
-        return generateOutput(seqAnalysis.next, allNumbers);
+        // 📊 3. RECENT TREND RATIO FILTER (OVERALL 20 RESULTS)
+        let recent20 = allResults.slice(0, 20);
+        let bigCount = recent20.filter(r => r === "B").length;
+        let trendNext = bigCount >= 10 ? "BIG" : "SMALL";
+
+        // Double Confirmation: Filter Match
+        let finalPred = (patternNext === trendNext) ? patternNext : (last5[0] === "B" ? "SMALL" : "BIG");
+
+        return generateOutput(finalPred, allNumbers);
 
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
@@ -161,13 +146,18 @@ function generateOutput(predResult, allNumbers) {
 
 async function fetchWinGoData() {
     try {
-        let data = null;
-        
-        // 🔄 SCRAPE.DO INTEGRATION (Bypasses 403 Forbidden completely)
-        const scrapeDoUrl = "http://api.scrape.do?token=" + SCRAPE_DO_TOKEN + "&url=" + encodeURIComponent(TARGET_URL);
-        const scrapeRes = await axios.get(scrapeDoUrl, { timeout: 12000 });
-        data = scrapeRes.data;
+        const response = await axios.get(TARGET_URL, {
+            headers: {
+                'User-Agent': getRandomUserAgent(),
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': 'https://draw.ar-lottery01.com',
+                'Referer': 'https://draw.ar-lottery01.com/',
+                'Cache-Control': 'no-cache'
+            },
+            timeout: 8000
+        });
 
+        let data = response.data;
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) {}
         }
@@ -205,11 +195,25 @@ async function fetchWinGoData() {
                     if (maintenanceLevel > 7) {
                         maintenanceLevel = 1;
                     }
+
+                    // 🛡️ Trigger Loss Skip after 2 continuous losses
+                    if (consecLosses >= 2) {
+                        skipCounter = 2; // Skip next 2 periods
+                    }
                 }
             }
 
             if (nextPeriod !== lastSentPeriod) {
-                let pred = advancedPatternEngine(list, consecLosses);
+                // 🛑 Check if Bot is in Skip Mode
+                if (skipCounter > 0) {
+                    console.log(`[SAFE SKIP] Skipping period ${nextPeriod} to avoid loss streak. Remaining skips: ${skipCounter}`);
+                    skipCounter--;
+                    lastSentPeriod = nextPeriod;
+                    lastPredictedPeriod = null; // Reset prediction during skip
+                    return;
+                }
+
+                let pred = safePatternEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -236,13 +240,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] WinGo 30S Scrape.do Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] WinGo 30S Safe Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[SCRAPE.DO ERROR]:', error.message);
+        console.error('[FETCH ERROR]:', error.message);
     }
 }
 
-console.log("WinGo 30S Scrape.do Engine Active...");
+console.log("WinGo 30S Safe Filter Engine Active...");
 setInterval(fetchWinGoData, 10000);
