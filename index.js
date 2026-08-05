@@ -5,14 +5,16 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 10-Sequence Pattern Analyzer Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Fast Pattern Analyzer Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+
+// ⚡ UPDATED: 30S WinGo API Endpoint
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
@@ -42,8 +44,6 @@ const levelAmounts = {
 
 // 🎯 LAST 10 SEQUENCE ANALYZER ENGINE
 function analyzeLast10Sequence(results10) {
-    // results10 is array of 10 items e.g., ["B", "B", "S", "S", "B", "S", ...]
-    
     // 1. Dragon Detection (Continuous 3+ of same)
     let dragonCount = 1;
     for (let i = 0; i < results10.length - 1; i++) {
@@ -54,7 +54,7 @@ function analyzeLast10Sequence(results10) {
         return { mode: "DRAGON", next: results10[0] === "B" ? "BIG" : "SMALL" };
     }
 
-    // 2. Zig-Zag Detection (Alternate B-S-B-S in last 4-6)
+    // 2. Zig-Zag Detection (Alternate B-S-B-S in last 4)
     let isZigZag = true;
     for (let i = 0; i < 4; i++) {
         if (results10[i] === results10[i + 1]) {
@@ -63,18 +63,16 @@ function analyzeLast10Sequence(results10) {
         }
     }
     if (isZigZag) {
-        // Reverse last outcome for Zig-Zag
         return { mode: "ZIGZAG", next: results10[0] === "B" ? "SMALL" : "BIG" };
     }
 
-    // 3. Double Pattern Detection (BB-SS-BB or SS-BB-SS)
+    // 3. Double Pattern Detection (BB-SS or SS-BB)
     if (results10[0] === results10[1] && results10[2] === results10[3] && results10[0] !== results10[2]) {
-        // If pair is complete (2 of same), switch to opposite pair; else complete current pair
         let doubleNext = results10[0] === "B" ? "SMALL" : "BIG";
         return { mode: "DOUBLE", next: doubleNext };
     }
 
-    // 4. Mirror Pattern Detection (Sequence in last 10 reverses/mirrors)
+    // 4. Mirror Pattern Detection
     let firstHalf = results10.slice(0, 3).join("");
     let secondHalf = results10.slice(3, 6).join("");
     let invertedHalf = firstHalf.split("").map(ch => ch === "B" ? "S" : "B").join("");
@@ -82,7 +80,7 @@ function analyzeLast10Sequence(results10) {
         return { mode: "MIRROR", next: results10[0] === "B" ? "SMALL" : "BIG" };
     }
 
-    return null; // Fallback if no explicit sequence pattern matched in last 10
+    return null;
 }
 
 // 🧠 HIGH-PRECISION PATTERN & NUMBER SEARCH ENGINE
@@ -188,7 +186,7 @@ async function fetchWinGoData() {
     try {
         const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
         
-        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        const response = await axios.get(scraperUrl, { timeout: 10000 });
         let data = response.data;
 
         if (typeof data === 'string') {
@@ -235,7 +233,9 @@ async function fetchWinGoData() {
                 let pred = advancedPatternEngine(list, consecLosses);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
+                // ⚡ Updated Title with WinGo 30S
                 let msg = "👑 **KING PREDICTION**\n" +
+                          "⚡ **WinGo 30S** ⚡\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n" +
                           "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                           "🎯 **TARGET:** **" + pred.predResult + "**\n" +
@@ -258,7 +258,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Ultra Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] WinGo 30S Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -266,5 +266,6 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 10-Sequence Pattern Analyzer Engine Active...");
-setInterval(fetchWinGoData, 12000);
+console.log("WinGo 30S Fast Engine Active...");
+// ⚡ Reduced fetch interval to 5 seconds for fast 30s period tracking
+setInterval(fetchWinGoData, 5000);
