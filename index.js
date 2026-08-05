@@ -128,21 +128,29 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        console.log('[SYSTEM] Fetching data via ScrapingAnt...');
+        console.log('[SYSTEM] Fetching data via ScrapingAnt Normal Mode...');
         
-        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&proxy_type=datacenter`;
+        // ScrapingAnt with default browser mode (browser=true)
+        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
 
-        const response = await axios.get(scraperUrl, { timeout: 12000 });
+        const response = await axios.get(scraperUrl, { timeout: 30000 });
         
         let rawContent = response.data.content || response.data;
+        
         if (typeof rawContent === 'string') {
-            try { rawContent = JSON.parse(rawContent); } catch (e) {}
+            try { 
+                rawContent = JSON.parse(rawContent); 
+            } catch (e) {
+                // Stripping HTML tags if response wrapped in HTML tags
+                let cleanStr = rawContent.replace(/<[^>]*>?/gm, '').trim();
+                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
+            }
         }
 
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] Received empty list from ScrapingAnt.');
+            console.log('[SYSTEM] Received empty list. Raw Response Sample:', String(JSON.stringify(rawContent)).substring(0, 150));
             isFetching = false;
             return;
         }
@@ -260,5 +268,5 @@ async function fetchWinGoData() {
     }
 }
 
-// Check interval set to 10s to prevent concurrency limit (1 request limit)
-setInterval(fetchWinGoData, 10000);
+// Check every 12 seconds
+setInterval(fetchWinGoData, 12000);
