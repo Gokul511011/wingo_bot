@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Pattern & Deep History Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Advanced Profit & Loss Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Config
@@ -28,12 +28,21 @@ let totalWins = 0;
 let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
+let cooldownCounter = 0; // 6-level loss stop system tracker
 
 // 60 Predictions History Array
 let prediction60History = [];
 
-const levelAmounts = {
-    1: "₹10", 2: "₹30", 3: "₹90", 4: "₹270", 5: "₹810", 6: "₹2430", 7: "₹7290"
+// 8 Level Amounts & Values for Net Profit Calculation
+const levelData = {
+    1: { name: "₹10", val: 10, winPayout: 19.60 },
+    2: { name: "₹25", val: 25, winPayout: 49.00 },
+    3: { name: "₹60", val: 60, winPayout: 117.60 },
+    4: { name: "₹140", val: 140, winPayout: 274.40 },
+    5: { name: "₹320", val: 320, winPayout: 627.20 },
+    6: { name: "₹700", val: 700, winPayout: 1372.00 },
+    7: { name: "₹1500", val: 1500, winPayout: 2940.00 },
+    8: { name: "₹3200", val: 3200, winPayout: 6272.00 }
 };
 
 // 🎯 DEEP HISTORY PATTERN ENGINE
@@ -49,15 +58,15 @@ function deepHistoryPatternEngine(history) {
         if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
-        // 2. Zig-Zag Pattern Check
+        // 2. Zig-Zag Pattern
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 3. Double Pattern Check
+        // 3. Double Pattern
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Page 1 & Deep History Matching (50 to 100 Pages Lookup)
+        // 4. Page 1 & Deep History Search
         else {
             let scoreB = 0;
             let scoreS = 0;
@@ -157,7 +166,6 @@ async function fetchWinGoData() {
 
                     dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
 
-                    // Store Win & Level details
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
 
@@ -167,18 +175,35 @@ async function fetchWinGoData() {
                     
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                     maintenanceLevel++;
-                    if (maintenanceLevel > 7) maintenanceLevel = 1;
+
+                    // 🛑 6-LEVEL LOSS PROTECTION TRIGGER
+                    if (consecLosses >= 6) {
+                        cooldownCounter = 5; // Pause next 5 predictions
+                        consecLosses = 0;
+                        maintenanceLevel = 1;
+                        await bot.sendMessage(CHANNEL_ID, "⚠️ **6 CONTINUOUS LOSSES DETECTED!**\n🛑 Bot is taking a break for 5 predictions to prevent bad pattern loss.", { parse_mode: 'Markdown' });
+                    }
+
+                    if (maintenanceLevel > 8) maintenanceLevel = 1;
                 }
 
-                // Keep only last 60 records
                 if (prediction60History.length > 60) {
                     prediction60History.pop();
                 }
             }
 
             if (nextPeriod !== lastSentPeriod) {
+                // If bot is in 5-period stop mode
+                if (cooldownCounter > 0) {
+                    cooldownCounter--;
+                    console.log(`[STOP SYSTEM] Skipping prediction. Remaining cooldown: ${cooldownCounter}`);
+                    lastSentPeriod = nextPeriod;
+                    return;
+                }
+
                 let pred = deepHistoryPatternEngine(list);
-                let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
+                let currentLevelInfo = levelData[maintenanceLevel] || levelData[1];
+                let nextLevelInfo = levelData[maintenanceLevel + 1] || levelData[1];
 
                 let msg = "👑 **KING PREDICTION**\n" +
                           "⚡ **WinGo 30S** ⚡\n" +
@@ -187,30 +212,41 @@ async function fetchWinGoData() {
                           "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                           "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                           "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
+                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentLevelInfo.name + ")**\n" +
+                          "👉 **NEXT BET:** **Level " + (maintenanceLevel + 1) + " (" + nextLevelInfo.name + ")** *(If Level " + maintenanceLevel + " Losses)*\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n";
 
                 if (dynamicWinMsg !== "") {
                     msg += dynamicWinMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
                 }
 
-                // 📊 60 PREDICTIONS LEVEL-WISE SUMMARY LOGIC
+                // 📊 OVERALL NET PROFIT & LEVEL REPORT
                 let historyLen = prediction60History.length;
                 let wins60 = prediction60History.filter(x => x.status === "WIN").length;
                 let losses60 = prediction60History.filter(x => x.status === "LOSS").length;
 
-                // Level Count Calculation
-                let levelCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+                let levelCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+                let netProfit = 0;
+
                 prediction60History.forEach(item => {
-                    if (item.status === "WIN" && item.level >= 1 && item.level <= 7) {
-                        levelCounts[item.level]++;
+                    let lvl = item.level;
+                    let info = levelData[lvl] || levelData[1];
+
+                    if (item.status === "WIN") {
+                        if (levelCounts[lvl] !== undefined) levelCounts[lvl]++;
+                        netProfit += (info.winPayout - info.val);
+                    } else if (item.status === "LOSS") {
+                        netProfit -= info.val;
                     }
                 });
+
+                let profitSign = netProfit >= 0 ? "+₹" : "-₹";
 
                 msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n" +
                        "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
-                       "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n\n" +
+                       "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n" +
+                       "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n\n" +
                        "🎯 **LEVEL WINS BREAKDOWN:**\n" +
                        "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
                        "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
@@ -219,6 +255,7 @@ async function fetchWinGoData() {
                        "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
                        "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
                        "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
+                       "• **Level 8 Wins:** " + levelCounts[8] + "\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
