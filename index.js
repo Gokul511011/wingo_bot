@@ -1,4 +1,59 @@
-// 🎯 ADVANCED PATTERN & COLOUR FIRST ENGINE (Custom Rules)
+const axios = require('axios');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+// Express Server Setup (Render 24/7 Keeping Alive & Port Binding)
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.get('/', (req, res) => res.send('WinGo 30S High Accuracy Bot v2.0 Active!'));
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server listening on port ${PORT}`);
+});
+
+// Bot Configuration
+const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+const CHANNEL_ID = '-1002486828817';
+
+// Scrape.do Proxy API
+const SCRAPE_DO_TOKEN = '4ddb13d503da4001819d56960d645d7adef32fa264b';
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
+const PROXY_URL = `https://api.scrape.do/?token=${SCRAPE_DO_TOKEN}&url=${encodeURIComponent(TARGET_URL)}`;
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+let lastSentPeriod = "";
+let lastPredictedResult = null;
+let lastPredictedNumbers = []; 
+let lastPredictedColorType = null;
+let lastPredictedPeriod = null;
+
+let totalWins = 0;
+let totalLosses = 0;
+let maintenanceLevel = 1;
+
+// Level Investment Amounts
+const levelAmounts = {
+    1: "₹1",
+    2: "₹3",
+    3: "₹9",
+    4: "₹27",
+    5: "₹81",
+    6: "₹243",
+    7: "₹729",
+    8: "₹1300"
+};
+
+function getActualColorInfo(num) {
+    if (num === 0) return { full: "RED / VIOLET", type: "RED" };
+    if (num === 5) return { full: "GREEN / VIOLET", type: "GREEN" };
+    if ([1, 3, 7, 9].includes(num)) return { full: "GREEN", type: "GREEN" };
+    return { full: "RED", type: "RED" };
+}
+
+// 🎯 ADVANCED PATTERN & COLOUR ENGINE v2.0
 function highAccuracyEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -7,7 +62,7 @@ function highAccuracyEngine(history) {
         let last10 = allResults.slice(0, 10);
         let predResult = "BIG";
 
-        // 1. DRAGON STREAK (Thodarnthu 3+ ore result vandha adhe follow pannu)
+        // 1. DRAGON PATTERN (Thodarnthu 3+ same result)
         if (last10[0] === last10[1] && last10[1] === last10[2]) {
             predResult = last10[0];
         } 
@@ -15,18 +70,17 @@ function highAccuracyEngine(history) {
         else if (last10[0] !== last10[1] && last10[1] !== last10[2] && last10[2] !== last10[3]) {
             predResult = last10[0] === "BIG" ? "SMALL" : "BIG";
         } 
-        // 3. 1-2 PATTERN CHECK (B, S, S -> Expect B | S, B, B -> Expect S)
+        // 3. 1-2 PATTERN CHECK (S, S, B -> Next B | B, B, S -> Next S)
         else if (last10[1] === last10[2] && last10[0] !== last10[1]) {
             predResult = last10[1] === "BIG" ? "SMALL" : "BIG";
         }
-        // 4. MAJORITY WEIGHTED FALLBACK (Last 10-la edhu jaasthi irukko)
+        // 4. MAJORITY WEIGHTED FALLBACK
         else {
             let countB = last10.filter(x => x === "BIG").length;
             predResult = countB >= 5 ? "BIG" : "SMALL";
         }
 
-        // 5. COLOUR FIRST & NUMBER MAPPING LOGIC
-        // Recent numbers-a base panni high frequency number-a priority panrom
+        // 5. HIGH-WEIGHTAGE NUMBER PICKING (Top 2 Lucky Numbers)
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let recent15 = allNumbers.slice(0, 15);
         let freqMap = {};
@@ -34,7 +88,7 @@ function highAccuracyEngine(history) {
         candidateNums.forEach(n => freqMap[n] = 0);
         recent15.forEach((n, idx) => {
             if (candidateNums.includes(n)) {
-                freqMap[n] += (15 - idx); // Recent numbers-ukku weightage adhigam
+                freqMap[n] += (15 - idx); // Recent numbers getting higher priority
             }
         });
 
@@ -56,3 +110,86 @@ function highAccuracyEngine(history) {
         return { predResult: "BIG", targetNumbers: [7, 8], colorStr: "🟢 GREEN", mainColorType: "GREEN" };
     }
 }
+
+async function fetchWinGoData() {
+    try {
+        const response = await axios.get(PROXY_URL, { timeout: 15000 });
+
+        let data = response.data;
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch (e) {}
+        }
+
+        let list = data?.data?.list || data?.list || data;
+
+        if (Array.isArray(list) && list.length > 0) {
+            let lastItem = list[0];
+            let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+            let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+            let actualColorInfo = getActualColorInfo(actualNum);
+            let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+            
+            let nextPeriod = String(BigInt(actualPeriod) + 1n);
+            let cheerMsgText = "";
+
+            if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+                let isResultHit = (lastPredictedResult === actualResult);
+                let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
+                let isColorHit = (lastPredictedColorType === actualColorInfo.type);
+
+                if (isResultHit) {
+                    totalWins++;
+                    maintenanceLevel = 1;
+                    
+                    if (isNumberHit && isColorHit) {
+                        cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColorInfo.type} JACKPOT WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    } else {
+                        cheerMsgText = `🏆🎉 **${actualResult} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    }
+                } else {
+                    totalLosses++;
+                    maintenanceLevel++;
+                    if (maintenanceLevel > 8) maintenanceLevel = 1;
+                    cheerMsgText = "💪 **Cheer Up Mame! Next Time Mark It!** 👍\nBetter Luck Next Time!";
+                }
+            }
+
+            if (nextPeriod !== lastSentPeriod) {
+                let pred = highAccuracyEngine(list);
+                let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
+
+                let msg = "👑 **KING PREDICTION**\n" +
+                          "⚡ **WinGo 30S** ⚡\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n" +
+                          "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                          "🎯 **TARGET:** **" + pred.predResult + "**\n" +
+                          "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                          "🔢 **LUCKY NUMBERS:** `" + pred.targetNumbers.join(", ") + "`\n" +
+                          "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
+                          "━━━━━━━━━━━━━━━━━━━━━\n";
+
+                if (cheerMsgText !== "") {
+                    msg += cheerMsgText + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+                }
+
+                msg += "\n🏆 **TOTAL WINS:** **" + totalWins + "**\n" +
+                       "💔 **TOTAL LOSS:** **" + totalLosses + "**\n\n" +
+                       "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+                await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+
+                lastSentPeriod = nextPeriod;
+                lastPredictedPeriod = nextPeriod;
+                lastPredictedResult = pred.predResult;
+                lastPredictedNumbers = pred.targetNumbers;
+                lastPredictedColorType = pred.mainColorType;
+                console.log("[SUCCESS] Updated Prediction Sent: " + nextPeriod);
+            }
+        }
+    } catch (error) {
+        console.error('[PROXY FETCH ERROR]:', error.message);
+    }
+}
+
+console.log("WinGo 30S High Accuracy Engine Active...");
+setInterval(fetchWinGoData, 10000);
