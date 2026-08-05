@@ -32,15 +32,16 @@ let cooldownCounter = 0;
 
 let prediction60History = [];
 
+// 8 Level Bet Plan starting from ₹1 (3x Multiplier)
 const levelData = {
-    1: { name: "₹10", val: 10, winPayout: 19.60 },
-    2: { name: "₹30", val: 30, winPayout: 58.80 },
-    3: { name: "₹90", val: 90, winPayout: 176.40 },
-    4: { name: "₹270", val: 270, winPayout: 529.20 },
-    5: { name: "₹810", val: 810, winPayout: 1587.60 },
-    6: { name: "₹2430", val: 2430, winPayout: 4762.80 },
-    7: { name: "₹7290", val: 7290, winPayout: 14288.40 },
-    8: { name: "₹21870", val: 21870, winPayout: 42865.20 }
+    1: { name: "₹1", val: 1, winPayout: 1.96 },
+    2: { name: "₹3", val: 3, winPayout: 5.88 },
+    3: { name: "₹9", val: 9, winPayout: 17.64 },
+    4: { name: "₹27", val: 27, winPayout: 52.92 },
+    5: { name: "₹81", val: 81, winPayout: 158.76 },
+    6: { name: "₹243", val: 243, winPayout: 476.28 },
+    7: { name: "₹729", val: 729, winPayout: 1428.84 },
+    8: { name: "₹2187", val: 2187, winPayout: 4286.52 }
 };
 
 function deepHistoryPatternEngine(history) {
@@ -119,7 +120,6 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        // ⚡ OPTIMIZED FOR 1 CREDIT PER REQUEST: Added render=false & premium=false
         const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL) + "&render=false&premium=false";
         const response = await axios.get(scraperUrl, { timeout: 8000 });
         let data = response.data;
@@ -230,23 +230,31 @@ async function fetchWinGoData() {
                     }
                 });
 
+                // லாபம் அல்லது நஷ்டம் குறிக்கும் குறி (+ அல்லது -)
                 let profitSign = netProfit >= 0 ? "+₹" : "-₹";
 
+                // எப்போதுமே Wins, Losses மற்றும் Net Profit காட்டப்படும்
                 msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n" +
                        "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
                        "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n" +
-                       "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n\n" +
-                       "🎯 **LEVEL WINS BREAKDOWN:**\n" +
-                       "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
-                       "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
-                       "• **Level 3 Wins:** " + levelCounts[3] + "\n" +
-                       "• **Level 4 Wins:** " + levelCounts[4] + "\n" +
-                       "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
-                       "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
-                       "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
-                       "• **Level 8 Wins:** " + levelCounts[8] + "\n" +
-                       "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                       "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n";
+
+                // 60 Predictions சேகரிக்கப்பட்ட பிறகு மட்டுமே Level Wins Breakdown காட்டப்படும்
+                if (historyLen >= 60) {
+                    msg += "━━━━━━━━━━━━━━━━━━━━━\n" +
+                           "🎯 **LEVEL WINS BREAKDOWN:**\n" +
+                           "• **Level 1 Wins:** " + levelCounts[1] + "\n" +
+                           "• **Level 2 Wins:** " + levelCounts[2] + "\n" +
+                           "• **Level 3 Wins:** " + levelCounts[3] + "\n" +
+                           "• **Level 4 Wins:** " + levelCounts[4] + "\n" +
+                           "• **Level 5 Wins:** " + levelCounts[5] + "\n" +
+                           "• **Level 6 Wins:** " + levelCounts[6] + "\n" +
+                           "• **Level 7 Wins:** " + levelCounts[7] + "\n" +
+                           "• **Level 8 Wins:** " + levelCounts[8] + "\n";
+                }
+
+                msg += "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                        "🔗 **Register Link:**\n" + REGISTER_LINK;
 
                 await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
@@ -264,5 +272,4 @@ async function fetchWinGoData() {
     }
 }
 
-// ⏱️ Credits சேமிக்க Fetch Interval 8 வினாடிகளாக அதிகரிக்கப்பட்டுள்ளது (30s Game-க்கு போதுமானது)
 setInterval(fetchWinGoData, 8000);
