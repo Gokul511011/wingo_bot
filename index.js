@@ -5,13 +5,15 @@ const express = require('express');
 // Express Server for Render Ping (Prevents Sleep 24/7)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S 5-Sequence Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Scrape.do Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPER_API_KEY = 'fc6dfaab549908b96eb0e95cf75f563f';
+
+// ⚡ UPDATED SCRAPE.DO API TOKEN
+const SCRAPE_DO_TOKEN = '299ec0cbfd074bda8bffa9ddd82d0384abc2c59eb36';
 
 // ⚡ 30S WinGo API Endpoint
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -44,10 +46,9 @@ const levelAmounts = {
 
 // 🎯 LAST 5 RESULTS PATTERN & DRAGON CALCULATION ENGINE
 function analyzeLast5Sequence(resultsAll) {
-    // Take recent 5 results
-    let last5 = resultsAll.slice(0, 5); // Index 0 is most recent, 4 is 5th recent
+    let last5 = resultsAll.slice(0, 5);
 
-    // 🐉 1. DRAGON PATTERN CHECK (3+ continuous same outcome)
+    // 🐉 1. DRAGON PATTERN CHECK
     let dragonCount = 1;
     for (let i = 0; i < last5.length - 1; i++) {
         if (last5[i] === last5[i + 1]) dragonCount++;
@@ -55,19 +56,18 @@ function analyzeLast5Sequence(resultsAll) {
     }
 
     if (dragonCount >= 3) {
-        // Continue Dragon Trend
         return { mode: "DRAGON", next: last5[0] === "B" ? "BIG" : "SMALL" };
     }
 
     // ⚡ 2. LAST 5 SEQUENCE PATTERN MATCHING ACROSS 50 PAGES HISTORY
-    let pattern5Str = last5.join(""); // e.g. "BSBBB"
+    let pattern5Str = last5.join("");
     let scoreB = 0;
     let scoreS = 0;
 
     for (let i = 1; i < resultsAll.length - 6; i++) {
         let historical5 = resultsAll.slice(i, i + 5).join("");
         if (pattern5Str === historical5) {
-            let nextOutcome = resultsAll[i - 1]; // What appeared right after this 5-sequence
+            let nextOutcome = resultsAll[i - 1];
             if (nextOutcome === "B") scoreB += 5;
             if (nextOutcome === "S") scoreS += 5;
         }
@@ -76,13 +76,10 @@ function analyzeLast5Sequence(resultsAll) {
     if (scoreB > scoreS) return { mode: "PATTERN_MATCH", next: "BIG" };
     if (scoreS > scoreB) return { mode: "PATTERN_MATCH", next: "SMALL" };
 
-    // 🪞 3. FALLBACK ZIG-ZAG / ALTERNATE RULE FOR 5-SEQUENCE
-    // E.g., B S B S B -> next SMALL
     if (last5[0] !== last5[1] && last5[1] !== last5[2] && last5[2] !== last5[3]) {
         return { mode: "ZIGZAG", next: last5[0] === "B" ? "SMALL" : "BIG" };
     }
 
-    // Default reverse of last result if no match
     return { mode: "REVERSE_FLOW", next: last5[0] === "B" ? "SMALL" : "BIG" };
 }
 
@@ -92,7 +89,6 @@ function advancedPatternEngine(history, currentConsecLosses) {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        // 1️⃣ ANALYZE LAST 5 SEQUENCE
         let seqAnalysis = analyzeLast5Sequence(allResults);
 
         if (seqAnalysis !== null && seqAnalysis.mode === "DRAGON") {
@@ -101,7 +97,6 @@ function advancedPatternEngine(history, currentConsecLosses) {
             return generateOutput(seqAnalysis.next, allNumbers);
         }
 
-        // 2️⃣ LOSS PATTERN LOCK LOGIC (2+ Losses -> 5 Times Continuation)
         if (currentConsecLosses >= 2) {
             if (streakLockCount === 0) {
                 lockedPrediction = allResults[0] === "B" ? "BIG" : "SMALL";
@@ -114,7 +109,6 @@ function advancedPatternEngine(history, currentConsecLosses) {
             return generateOutput(lockedPrediction, allNumbers);
         }
 
-        // Return prediction calculated from Last 5 Sequence
         return generateOutput(seqAnalysis.next, allNumbers);
 
     } catch (e) {
@@ -123,7 +117,6 @@ function advancedPatternEngine(history, currentConsecLosses) {
     }
 }
 
-// Helper to generate Number & Color output mapping (SAME LOGIC KEPT)
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     let num1 = allNumbers[0];
@@ -131,7 +124,6 @@ function generateOutput(predResult, allNumbers) {
 
     let targetNumbers = [];
 
-    // Search last 2 numbers in 50 pages history
     let matchIndex = -1;
     for (let i = 1; i < allNumbers.length - 2; i++) {
         if (allNumbers[i + 1] === num2 && allNumbers[i] === num1) {
@@ -169,10 +161,12 @@ function generateOutput(predResult, allNumbers) {
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = "http://api.scraperapi.com?api_key=" + SCRAPER_API_KEY + "&url=" + encodeURIComponent(TARGET_URL);
+        let data = null;
         
-        const response = await axios.get(scraperUrl, { timeout: 10000 });
-        let data = response.data;
+        // 🔄 SCRAPE.DO INTEGRATION (Bypasses 403 Forbidden completely)
+        const scrapeDoUrl = "http://api.scrape.do?token=" + SCRAPE_DO_TOKEN + "&url=" + encodeURIComponent(TARGET_URL);
+        const scrapeRes = await axios.get(scrapeDoUrl, { timeout: 12000 });
+        data = scrapeRes.data;
 
         if (typeof data === 'string') {
             try { data = JSON.parse(data); } catch (e) {}
@@ -242,13 +236,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] WinGo 30S 5-Sequence Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] WinGo 30S Scrape.do Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[SCRAPER ERROR]:', error.message);
+        console.error('[SCRAPE.DO ERROR]:', error.message);
     }
 }
 
-console.log("WinGo 30S 5-Sequence Engine Active...");
-setInterval(fetchWinGoData, 5000);
+console.log("WinGo 30S Scrape.do Engine Active...");
+setInterval(fetchWinGoData, 10000);
