@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Deep Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Dual Number Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -15,7 +15,7 @@ const CHANNEL_ID = '-1002486828817';
 // Scrape.do Token
 const SCRAPE_DO_TOKEN = '4ddb13d503da4001819d56960d645d7adef32fa264b';
 
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=50&pageNo=1';
 const PROXY_URL = `https://api.scrape.do/?token=${SCRAPE_DO_TOKEN}&url=${encodeURIComponent(TARGET_URL)}`;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -23,7 +23,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
-let lastPredictedNumber = null;
+let lastPredictedNumbers = []; // Store array of 2 numbers
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
@@ -43,7 +43,7 @@ const levelAmounts = {
     8: "₹1300"
 };
 
-// 🎯 1000-HISTORY DEEP TREND & SINGLE NUMBER PRECISION ENGINE
+// 🎯 DEEP TREND & DUAL NUMBER PRECISION ENGINE
 function precisionEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -57,11 +57,10 @@ function precisionEngine(history) {
             return generateOutput(predRes, allNumbers);
         }
 
-        // 2. DEEP 1000-HISTORY PATTERN MATCHING
+        // 2. PATTERN MATCHING ACROSS AVAILABLE HISTORY
         let last4 = allResults.slice(0, 4);
         let pattern4Str = last4.join("");
         
-        // Scan up to 1000 history items available in API
         let deepHistory = allResults; 
 
         let scoreB = 0;
@@ -78,7 +77,7 @@ function precisionEngine(history) {
 
         // 3. RECENT MOMENTUM WEIGHTAGE (Last 10 & 20)
         let recent10 = allResults.slice(0, 10);
-        let recent20 = allResults.slice(0, 20);
+        let recent20 = allResults.slice(0, Math.min(20, allResults.length));
         
         let bigIn10 = recent10.filter(r => r === "B").length;
         let bigIn20 = recent20.filter(r => r === "B").length;
@@ -94,19 +93,19 @@ function precisionEngine(history) {
 
     } catch (e) {
         console.error("Precision Engine Error:", e.message);
-        return generateOutput("BIG", [7]);
+        return generateOutput("BIG", [7, 8]);
     }
 }
 
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    // Scan recent 30 history numbers for weighted single-number accuracy
-    let recent30Nums = allNumbers.slice(0, 30);
+    // Scan recent history numbers for weighted dual-number accuracy
+    let recentNums = allNumbers.slice(0, Math.min(30, allNumbers.length));
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
 
-    recent30Nums.forEach((n, index) => {
+    recentNums.forEach((n, index) => {
         if (candidateNums.includes(n)) {
             // Higher weightage for most recent occurrences
             let weight = index < 10 ? 3 : index < 20 ? 2 : 1;
@@ -114,16 +113,17 @@ function generateOutput(predResult, allNumbers) {
         }
     });
 
+    // Sort numbers by highest weightage and pick TOP 2
     let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
-    let targetNumber = sortedCandidates[0]; 
+    let targetNumbers = [sortedCandidates[0], sortedCandidates[1]]; 
 
     let primaryColour = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
     
-    if (targetNumber === 0 || targetNumber === 5) {
+    if (targetNumbers.includes(0) || targetNumbers.includes(5)) {
         primaryColour += " / 🟣 VIOLET";
     }
 
-    return { predResult, targetNumber, colorStr: primaryColour };
+    return { predResult, targetNumbers, colorStr: primaryColour };
 }
 
 async function fetchWinGoData() {
@@ -147,14 +147,15 @@ async function fetchWinGoData() {
             let cheerMsgText = "";
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
-                let isExactNumberHit = (lastPredictedNumber === actualNum);
+                // Check if actual result matches any of the 2 predicted numbers
+                let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
 
                 if (lastPredictedResult === actualResult) {
                     totalWins++;
                     maintenanceLevel = 1;
 
-                    if (isExactNumberHit) {
-                        cheerMsgText = "💥 **JACKPOT WINNER (SINGLE NUMBER HIT)** 💥\nCONGRATULATIONS 💐🎉";
+                    if (isNumberHit) {
+                        cheerMsgText = `💥 **JACKPOT WINNER (NUMBER ${actualNum} HIT)** 💥\nCONGRATULATIONS 💐🎉`;
                     } else {
                         cheerMsgText = "🏆🎉 **BIG WINNER** 🎉🏆\nCONGRATULATIONS 💐🎉";
                     }
@@ -190,7 +191,7 @@ async function fetchWinGoData() {
                           "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                           "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                           "🎨 **COLOUR FOCUS:** " + pred.colorStr + "\n" +
-                          "🔢 **SINGLE NUMBER:** `" + pred.targetNumber + "`\n" +
+                          "🔢 **LUCKY NUMBERS:** `" + pred.targetNumbers.join(", ") + "`\n" +
                           "💰 **LEVEL AMOUNT:** **Level " + maintenanceLevel + " (" + currentAmount + ")**\n" +
                           "━━━━━━━━━━━━━━━━━━━━━\n";
 
@@ -207,8 +208,8 @@ async function fetchWinGoData() {
                 lastSentPeriod = nextPeriod;
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
-                lastPredictedNumber = pred.targetNumber;
-                console.log("[SUCCESS] Deep Analysis Prediction Sent: " + nextPeriod);
+                lastPredictedNumbers = pred.targetNumbers;
+                console.log("[SUCCESS] Dual Number Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -216,5 +217,6 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S 1000-History Engine Active...");
-setInterval(fetchWinGoData, 25000);
+console.log("WinGo 30S Dual Number Engine Active...");
+// Polling every 12 seconds to match 30s game timing accurately
+setInterval(fetchWinGoData, 12000);
