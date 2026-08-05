@@ -44,33 +44,71 @@ const levelData = {
     8: { name: "₹2187", val: 2187, winPayout: 4286.52 }
 };
 
+// Helper function to invert B <-> S
+function invertPattern(str) {
+    return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
+}
+
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
-        let recentPattern = allResults.slice(0, 4).join(""); 
-        let predResult = "BIG";
+        let seq5 = allResults.slice(0, 5).join(""); 
+        let seq4 = allResults.slice(0, 4).join("");
+        let predResult = "";
 
-        if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
+        // 1. Direct Rule Overrides for BSBBS / SBSSB
+        if (seq5 === "BSBBS") {
+            predResult = "BIG";
+        } else if (seq5 === "SBSSB") {
+            predResult = "SMALL";
+        } 
+        // 2. Streaks Logic (3 in a row)
+        else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         } 
+        // 3. Alternating Pattern Logic (B-S-B-S)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 4. Double Pattern Logic (B-B-S-S)
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 5. Advanced Historical Mirror Scanning across 1000 Results
         else {
             let scoreB = 0;
             let scoreS = 0;
 
-            for (let i = 1; i < allResults.length - 5; i++) {
-                let historicalSeq = allResults.slice(i, i + 4).join("");
-                if (recentPattern === historicalSeq) {
-                    let nextItem = allResults[i - 1];
-                    if (nextItem === "B") scoreB++;
-                    if (nextItem === "S") scoreS++;
+            let mirrorSeq5 = invertPattern(seq5);
+            let mirrorSeq4 = invertPattern(seq4);
+
+            for (let i = 1; i < allResults.length - 6; i++) {
+                let histSeq5 = allResults.slice(i, i + 5).join("");
+                let histSeq4 = allResults.slice(i, i + 4).join("");
+                let nextItem = allResults[i - 1];
+
+                // Check direct 5-match
+                if (histSeq5 === seq5) {
+                    if (nextItem === "B") scoreB += 2;
+                    if (nextItem === "S") scoreS += 2;
+                }
+                // Check mirror 5-match (Inverted match gives inverted result score)
+                if (histSeq5 === mirrorSeq5) {
+                    if (nextItem === "S") scoreB += 2; // Mirror S means Direct B
+                    if (nextItem === "B") scoreS += 2; // Mirror B means Direct S
+                }
+
+                // Check direct 4-match
+                if (histSeq4 === seq4) {
+                    if (nextItem === "B") scoreB += 1;
+                    if (nextItem === "S") scoreS += 1;
+                }
+                // Check mirror 4-match
+                if (histSeq4 === mirrorSeq4) {
+                    if (nextItem === "S") scoreB += 1;
+                    if (nextItem === "B") scoreS += 1;
                 }
             }
 
@@ -79,29 +117,23 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
+        // --- NUMBER & COLOR PREDICTION ENGINE ---
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let recent3Nums = allNumbers.slice(0, 3);
-        let matchedNumbers = [];
+        let numberFrequency = {};
+        candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 1; i < allNumbers.length - 4; i++) {
-            let matches = 0;
-            if (allNumbers[i] === recent3Nums[0]) matches++;
-            if (allNumbers[i + 1] === recent3Nums[1]) matches++;
-            if (allNumbers[i + 2] === recent3Nums[2]) matches++;
-
-            if (matches >= 2) { 
-                let historicalNextNum = allNumbers[i - 1];
-                if (candidateNums.includes(historicalNextNum) && !matchedNumbers.includes(historicalNextNum)) {
-                    matchedNumbers.push(historicalNextNum);
+        for (let i = 1; i < allNumbers.length - 5; i++) {
+            let histSeq = allResults.slice(i, i + 4).join("");
+            if (histSeq === seq4 || histSeq === invertPattern(seq4)) {
+                let histNextNum = allNumbers[i - 1];
+                if (candidateNums.includes(histNextNum)) {
+                    numberFrequency[histNextNum] = (numberFrequency[histNextNum] || 0) + 1;
                 }
             }
-            if (matchedNumbers.length >= 2) break;
         }
 
-        if (matchedNumbers.length < 2) {
-            let defaultPicks = candidateNums.filter(n => !matchedNumbers.includes(n));
-            matchedNumbers.push(...defaultPicks.slice(0, 2 - matchedNumbers.length));
-        }
+        let sortedNumbers = candidateNums.sort((a, b) => numberFrequency[b] - numberFrequency[a]);
+        let matchedNumbers = sortedNumbers.slice(0, 2);
 
         let numbersStr = matchedNumbers.join(", ");
         let mainColor = predResult === "BIG" ? "GREEN" : "RED";
@@ -230,17 +262,14 @@ async function fetchWinGoData() {
                     }
                 });
 
-                // லாபம் அல்லது நஷ்டம் குறிக்கும் குறி (+ அல்லது -)
                 let profitSign = netProfit >= 0 ? "+₹" : "-₹";
 
-                // எப்போதுமே Wins, Losses மற்றும் Net Profit காட்டப்படும்
                 msg += "\n📊 **LAST " + historyLen + " PREDICTIONS REPORT:**\n" +
                        "━━━━━━━━━━━━━━━━━━━━━\n" +
                        "🏆 **TOTAL WINS:** " + wins60 + " / " + historyLen + "\n" +
                        "💔 **TOTAL LOSSES:** " + losses60 + " / " + historyLen + "\n" +
                        "💵 **OVERALL NET PROFIT:** **" + profitSign + Math.abs(netProfit).toFixed(2) + "**\n";
 
-                // 60 Predictions சேகரிக்கப்பட்ட பிறகு மட்டுமே Level Wins Breakdown காட்டப்படும்
                 if (historyLen >= 60) {
                     msg += "━━━━━━━━━━━━━━━━━━━━━\n" +
                            "🎯 **LEVEL WINS BREAKDOWN:**\n" +
