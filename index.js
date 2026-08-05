@@ -166,18 +166,19 @@ async function fetchWinGoData() {
                     if (isResultHit) winParts.push(actualResult + " WIN");
                     if (isNumberHit) winParts.push(actualNum + " WIN");
                     if (isColorHit) winParts.push(actualColor + " WIN");
+                    if (isNumberHit) winParts.push("JACKPOT NUMBERS");
 
                     dynamicWinMsg = "🏆 **" + winParts.join(" ") + "** 🏆";
 
                     prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
-                    maintenanceLevel = 1; // Win ஆனவுடன் Level 1-க்கு Reset ஆகும்
+                    maintenanceLevel = 1;
 
                 } else {
                     totalLosses++;
                     consecLosses++;
                     
                     prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-                    maintenanceLevel++; // Loss ஆனால் மட்டுமே அடுத்த Level-க்கு மாறும்
+                    maintenanceLevel++;
 
                     if (consecLosses >= 6) {
                         cooldownCounter = 5;
@@ -204,7 +205,6 @@ async function fetchWinGoData() {
 
                 let pred = deepHistoryPatternEngine(list);
                 
-                // துல்லியமான Level Info பெறப்படுகிறது
                 let activeLevel = maintenanceLevel;
                 let nextLevel = (activeLevel >= 8) ? 1 : activeLevel + 1;
                 
