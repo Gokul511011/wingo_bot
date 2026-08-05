@@ -5,14 +5,19 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S TLS Bypass Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Precision Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
+// Updated Scrape.do Token
+const SCRAPE_DO_TOKEN = '4ddb13d503da4001819d56960d645d7adef32fa264b';
+
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+// Standard proxy call to save credits (no super=true)
+const PROXY_URL = `https://api.scrape.do/?token=${SCRAPE_DO_TOKEN}&url=${encodeURIComponent(TARGET_URL)}`;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
@@ -109,27 +114,7 @@ function generateOutput(predResult, allNumbers) {
 
 async function fetchWinGoData() {
     try {
-        // Direct Axios Request with Cloudflare Bypass Headers
-        const response = await axios({
-            method: 'get',
-            url: TARGET_URL,
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Referer': 'https://www.rajastake7.com/',
-                'Origin': 'https://www.rajastake7.com',
-                'Sec-Ch-Ua': '"Not-A.Brand";v="99", "Chromium";v="124", "Google Chrome";v="124"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'cross-site',
-                'Priority': 'u=1, i'
-            }
-        });
+        const response = await axios.get(PROXY_URL, { timeout: 15000 });
 
         let data = response.data;
         if (typeof data === 'string') {
@@ -208,13 +193,14 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumber = pred.targetNumber;
-                console.log("[SUCCESS] TLS Bypass WinGo Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Proxy Fetch WinGo Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[FETCH ERROR]:', error.message);
+        console.error('[PROXY FETCH ERROR]:', error.message);
     }
 }
 
-console.log("WinGo 30S TLS Bypass Engine Active...");
-setInterval(fetchWinGoData, 15000);
+console.log("WinGo 30S Engine Active...");
+// Fetch every 25s to save API credits
+setInterval(fetchWinGoData, 25000);
