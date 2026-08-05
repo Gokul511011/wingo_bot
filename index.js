@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Smart Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S 50-History Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -38,41 +38,45 @@ const levelAmounts = {
     7: "₹7290"
 };
 
-// 🎯 HIGH-ACCURACY DYNAMIC TREND ENGINE
-function smartTrendEngine(history) {
+// 🎯 50-HISTORY PATTERN ANALYSIS ENGINE
+function patternAnalysisEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
+        // 1. Dragon Check (3 Consecutive Same Results)
+        let last3 = allResults.slice(0, 3);
+        if (last3[0] === last3[1] && last3[1] === last3[2]) {
+            let predRes = last3[0] === "B" ? "BIG" : "SMALL";
+            return generateOutput(predRes, allNumbers);
+        }
+
+        // 2. Exact 5-Pattern Matching across Last 50 Results
         let last5 = allResults.slice(0, 5);
+        let pattern5Str = last5.join("");
 
-        // 1. DRAGON TREND CHECK (Same result repeated 2 or more times)
-        if (last5[0] === last5[1] && last5[1] === last5[2]) {
-            let predRes = last5[0] === "B" ? "BIG" : "SMALL";
-            return generateOutput(predRes, allNumbers);
+        let history50 = allResults.slice(0, 50);
+        let scoreB = 0;
+        let scoreS = 0;
+
+        for (let i = 1; i < history50.length - 5; i++) {
+            let subPattern = history50.slice(i, i + 5).join("");
+            if (pattern5Str === subPattern) {
+                let nextOutcome = history50[i - 1];
+                if (nextOutcome === "B") scoreB += 10;
+                if (nextOutcome === "S") scoreS += 10;
+            }
         }
 
-        // 2. ZIG-ZAG PATTERN DETECTOR (B-S-B-S or S-B-S-B)
-        if (last5[0] !== last5[1] && last5[1] !== last5[2] && last5[2] !== last5[3]) {
-            let predRes = last5[0] === "B" ? "SMALL" : "BIG"; // Continue Zig-Zag
-            return generateOutput(predRes, allNumbers);
+        let patternNext = scoreB >= scoreS ? "BIG" : "SMALL";
+
+        // 3. Fallback Trend Balance if no match in 50 history
+        if (scoreB === 0 && scoreS === 0) {
+            let bigCount = history50.filter(r => r === "B").length;
+            patternNext = bigCount >= 25 ? "BIG" : "SMALL";
         }
 
-        // 3. SHORT TERM TREND WEIGHTAGE (Last 10 results)
-        let recent10 = allResults.slice(0, 10);
-        let bigCount = recent10.filter(r => r === "B").length;
-        let smallCount = recent10.filter(r => r === "S").length;
-
-        let finalPred = "BIG";
-        if (bigCount > smallCount) {
-            finalPred = "BIG";
-        } else if (smallCount > bigCount) {
-            finalPred = "SMALL";
-        } else {
-            finalPred = last5[0] === "B" ? "SMALL" : "BIG"; // Break tie with alternate
-        }
-
-        return generateOutput(finalPred, allNumbers);
+        return generateOutput(patternNext, allNumbers);
 
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
@@ -83,8 +87,8 @@ function smartTrendEngine(history) {
 function generateOutput(predResult, allNumbers) {
     let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
     
-    // Frequency calculation in recent 15 results
-    let recentNums = allNumbers.slice(0, 15);
+    // Pick most frequent numbers in candidate pool from last 20 results
+    let recentNums = allNumbers.slice(0, 20);
     let freqMap = {};
     candidateNums.forEach(n => freqMap[n] = 0);
 
@@ -94,7 +98,6 @@ function generateOutput(predResult, allNumbers) {
         }
     });
 
-    // Sort candidate numbers by highest frequency
     let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
     let targetNumbers = sortedCandidates.slice(0, 2);
 
@@ -148,21 +151,21 @@ async function fetchWinGoData() {
                         maintenanceLevel = 1;
                     }
 
-                    // 🛑 STRICT SKIP LOGIC: Skip 2 periods immediately after 1 loss
+                    // Strict Skip 2 periods after 1 loss
                     skipCounter = 2;
                 }
             }
 
             if (nextPeriod !== lastSentPeriod) {
                 if (skipCounter > 0) {
-                    console.log(`[SAFE SKIP] Skipping period ${nextPeriod} to avoid market fluctuation. Skips left: ${skipCounter}`);
+                    console.log(`[SAFE SKIP] Skipping period ${nextPeriod}. Skips left: ${skipCounter}`);
                     skipCounter--;
                     lastSentPeriod = nextPeriod;
                     lastPredictedPeriod = null;
                     return;
                 }
 
-                let pred = smartTrendEngine(list);
+                let pred = patternAnalysisEngine(list);
                 let currentAmount = levelAmounts[maintenanceLevel] || ("Level " + maintenanceLevel);
 
                 let msg = "👑 **KING PREDICTION**\n" +
@@ -189,7 +192,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] WinGo 30S Smart Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] WinGo 30S Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -197,5 +200,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Smart Engine Active...");
+console.log("WinGo 30S 50-History Engine Active...");
 setInterval(fetchWinGoData, 15000);
