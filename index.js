@@ -193,7 +193,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
-                console.log("[SUCCESS] Non-stop Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
@@ -201,5 +201,5 @@ async function fetchWinGoData() {
     }
 }
 
-console.log("WinGo 30S Non-Stop Engine Active...");
+console.log("WinGo 30S Engine Active...");
 setInterval(fetchWinGoData, 12000);
