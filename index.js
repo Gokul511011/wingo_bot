@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Non-Stop Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -121,6 +121,33 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
+// Deep JSON Extractor
+function extractJsonFromResponse(data) {
+    if (typeof data === 'object' && data !== null) {
+        if (data.data?.list || data.list) return data;
+        if (data.content) return extractJsonFromResponse(data.content);
+    }
+    
+    if (typeof data === 'string') {
+        try {
+            return JSON.parse(data);
+        } catch (e) {
+            // Regex match for JSON array/object inside HTML/pre tags
+            const jsonMatch = data.match(/\{[\s\S]*"list"[\s\S]*\}/);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (err) {}
+            }
+            let cleanStr = data.replace(/<[^>]*>?/gm, '').trim();
+            try {
+                return JSON.parse(cleanStr);
+            } catch (err) {}
+        }
+    }
+    return null;
+}
+
 let isFetching = false;
 
 async function fetchWinGoData() {
@@ -128,35 +155,17 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        console.log('[SYSTEM] Fetching data via ScrapingAnt Browser Engine...');
+        console.log('[SYSTEM] Fetching data via ScrapingAnt Engine...');
         
-        // ScrapingAnt V2 with browser=true to bypass Cloudflare 403
         const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true`;
 
         const response = await axios.get(scraperUrl, { timeout: 30000 });
         
-        let rawContent = response.data;
-        
-        if (typeof rawContent === 'string') {
-            try { 
-                rawContent = JSON.parse(rawContent); 
-            } catch (e) {
-                let cleanStr = rawContent.replace(/<[^>]*>?/gm, '').trim();
-                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
-            }
-        } else if (rawContent.content && typeof rawContent.content === 'string') {
-            try {
-                rawContent = JSON.parse(rawContent.content);
-            } catch (e) {
-                let cleanStr = rawContent.content.replace(/<[^>]*>?/gm, '').trim();
-                try { rawContent = JSON.parse(cleanStr); } catch (err) {}
-            }
-        }
-
-        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+        let parsed = extractJsonFromResponse(response.data);
+        let list = parsed?.data?.list || parsed?.list || (Array.isArray(parsed) ? parsed : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log('[SYSTEM] Raw output parsing failed, retrying next loop...');
+            console.log('[SYSTEM] Raw output snippet:', String(JSON.stringify(response.data)).substring(0, 150));
             isFetching = false;
             return;
         }
@@ -274,5 +283,5 @@ async function fetchWinGoData() {
     }
 }
 
-// Check every 10 seconds (gives ScrapingAnt enough time to render and release lock)
+// Interval set to 10s
 setInterval(fetchWinGoData, 10000);
