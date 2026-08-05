@@ -29,18 +29,20 @@ let totalLosses = 0;
 let consecLosses = 0;
 let maintenanceLevel = 1;
 let cooldownCounter = 0;
+let totalProfitLoss = 0; // Profit/Loss Tracking
 
 let prediction60History = [];
 
+// 8-Level Bet Amounts under ₹2500 Limit
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
-    3: { name: "₹9", val: 9 },
-    4: { name: "₹27", val: 27 },
-    5: { name: "₹81", val: 81 },
-    6: { name: "₹243", val: 243 },
-    7: { name: "₹729", val: 729 },
-    8: { name: "₹2187", val: 2187 }
+    3: { name: "₹7", val: 7 },
+    4: { name: "₹20", val: 20 },
+    5: { name: "₹50", val: 50 },
+    6: { name: "₹150", val: 150 },
+    7: { name: "₹450", val: 450 },
+    8: { name: "₹1350", val: 1350 }
 };
 
 function invertPattern(str) {
@@ -55,19 +57,15 @@ function deepHistoryPatternEngine(history) {
 
         let predResult = "";
 
-        // 1. Dragon Trend Detection (3 அல்லது அதற்கு மேல் ஒரே ரிசல்ட் வந்தால் தொடர்வது)
         if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
-        // 2. Alternate / Zig-Zag Detection (B S B S B S முறையில் வந்தால் மாற்றி வைப்பது)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 3. Double Pair Trend Detection (BB SS BB SS)
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Heavy Frequency & Weight-based Analysis (Weighted Trend Check)
         else {
             let scoreB = 0;
             let scoreS = 0;
@@ -94,7 +92,6 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // Smart Number Prediction
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
@@ -177,10 +174,15 @@ async function fetchWinGoData() {
             let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
 
             let currentLevelExecuted = maintenanceLevel;
+            let currentBetVal = levelData[currentLevelExecuted]?.val || 1;
 
             if (isResultHit) {
                 totalWins++;
                 consecLosses = 0;
+
+                // Win Profit Calculation (approx 0.98x payout)
+                let winAmount = currentBetVal * 0.98;
+                totalProfitLoss += winAmount;
 
                 if (isResultHit && isNumberHit && isColorHit) {
                     dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
@@ -196,22 +198,24 @@ async function fetchWinGoData() {
                 }
 
                 prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
-                maintenanceLevel = 1; // Win கிடைத்தவுடன் Level 1-க்கு ரீசெட் ஆகும்
+                maintenanceLevel = 1; 
 
             } else {
                 totalLosses++;
                 consecLosses++;
+
+                // Loss Deduction
+                totalProfitLoss -= currentBetVal;
 
                 dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
 
                 prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 maintenanceLevel++;
 
-                // தொடர்ந்து 5 முறை லாஸ் ஆனால் 3 பெட் பிரேக் எடுக்கும் (Safe Risk Control)
                 if (consecLosses >= 5) {
                     cooldownCounter = 3;
                     consecLosses = 0;
-                    maintenanceLevel = 1; // 5 லாஸுக்குப் பிறகு உடனே Level 1-க்கு ரீசெட் செய்யப்படும்
+                    maintenanceLevel = 1; 
                     await bot.sendMessage(CHANNEL_ID, "⚠️ **HIGH RISK TREND DETECTED!**\n🛑 Bot is taking a break for 3 predictions to analyze new trend pattern.", { parse_mode: 'Markdown' });
                 }
 
@@ -236,6 +240,8 @@ async function fetchWinGoData() {
             let currentLevelInfo = levelData[activeLevel] || levelData[1];
             let nextLevelInfo = levelData[nextLevel] || levelData[1];
 
+            let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+
             let msg = "👑 **KING PREDICTION**\n" +
                       "⚡ **WinGo 30S** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -243,8 +249,8 @@ async function fetchWinGoData() {
                       "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                       "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                      "💰 **LEVEL AMOUNT:** **Level " + activeLevel + " (" + currentLevelInfo.name + ")**\n" +
-                      "👉 **NEXT BET:** **Level " + nextLevel + " (" + nextLevelInfo.name + ")** *(If Level " + activeLevel + " Losses)*\n" +
+                      "💰 **BET AMOUNT:** **" + currentLevelInfo.name + " (Level " + activeLevel + ")**\n" +
+                      "👉 **IF LOSS NEXT BET:** **" + nextLevelInfo.name + " (Level " + nextLevel + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -253,6 +259,7 @@ async function fetchWinGoData() {
 
             msg += "🏆 **WINS:** " + totalWins + "\n" +
                    "💔 **LOSSES:** " + totalLosses + "\n" +
+                   "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
