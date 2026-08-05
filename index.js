@@ -24,6 +24,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 let lastSentPeriod = "";
 let lastPredictedResult = null;
 let lastPredictedNumbers = []; 
+let lastPredictedColorType = null; // 'GREEN' or 'RED'
 let lastPredictedPeriod = null;
 
 let totalWins = 0;
@@ -41,6 +42,14 @@ const levelAmounts = {
     7: "₹729",
     8: "₹1300"
 };
+
+// Helper: Determine actual color string and main color type
+function getActualColorInfo(num) {
+    if (num === 0) return { full: "RED / VIOLET", type: "RED" };
+    if (num === 5) return { full: "GREEN / VIOLET", type: "GREEN" };
+    if ([1, 3, 7, 9].includes(num)) return { full: "GREEN", type: "GREEN" };
+    return { full: "RED", type: "RED" }; // 2, 4, 6, 8
+}
 
 // 🎯 HIGH WIN-RATE PREDICTION ENGINE
 function highAccuracyEngine(history) {
@@ -79,16 +88,17 @@ function highAccuracyEngine(history) {
         let sortedCandidates = candidateNums.sort((a, b) => freqMap[b] - freqMap[a]);
         let targetNumbers = [sortedCandidates[0], sortedCandidates[1]];
 
+        let mainColorType = predResult === "BIG" ? "GREEN" : "RED";
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
         if (targetNumbers.includes(0) || targetNumbers.includes(5)) {
             colorStr += " / 🟣 VIOLET";
         }
 
-        return { predResult, targetNumbers, colorStr };
+        return { predResult, targetNumbers, colorStr, mainColorType };
 
     } catch (e) {
         console.error("Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [7, 8], colorStr: "🟢 GREEN" };
+        return { predResult: "BIG", targetNumbers: [7, 8], colorStr: "🟢 GREEN", mainColorType: "GREEN" };
     }
 }
 
@@ -107,6 +117,7 @@ async function fetchWinGoData() {
             let lastItem = list[0];
             let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
             let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+            let actualColorInfo = getActualColorInfo(actualNum);
             let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
             
             let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -114,12 +125,19 @@ async function fetchWinGoData() {
 
             if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
                 let isResultHit = (lastPredictedResult === actualResult);
+                let isNumberHit = Array.isArray(lastPredictedNumbers) && lastPredictedNumbers.includes(actualNum);
+                let isColorHit = (lastPredictedColorType === actualColorInfo.type);
 
                 if (isResultHit) {
                     totalWins++;
                     maintenanceLevel = 1;
-                    // Result Format: BIG 7 WIN / SMALL 2 WIN
-                    cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    
+                    // Check if Target, Number, and Color ALL WON simultaneously
+                    if (isNumberHit && isColorHit) {
+                        cheerMsgText = `🏆🎉 **${actualResult} ${actualNum} ${actualColorInfo.type} JACKPOT WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    } else {
+                        cheerMsgText = `🏆🎉 **${actualResult} WIN** 🎉🏆\nCONGRATULATIONS 💐🎉`;
+                    }
                 } else {
                     totalLosses++;
                     maintenanceLevel++;
@@ -156,6 +174,7 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumbers = pred.targetNumbers;
+                lastPredictedColorType = pred.mainColorType;
                 console.log("[SUCCESS] Updated Prediction Sent: " + nextPeriod);
             }
         }
