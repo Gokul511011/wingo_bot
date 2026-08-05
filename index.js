@@ -2,7 +2,7 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render Deployment
+// Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
 app.get('/', (req, res) => res.send('WinGo 30S High Precision Engine Active!'));
@@ -11,8 +11,6 @@ app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT))
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-
-// ScrapingAnt API Key
 const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -34,7 +32,6 @@ let cooldownCounter = 0;
 
 let prediction60History = [];
 
-// 8 Level Bet Plan starting from ₹1 (3x Multiplier)
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
@@ -58,7 +55,6 @@ function deepHistoryPatternEngine(history) {
         let seq5 = allResults.slice(0, 5).join(""); 
         let predResult = "";
 
-        // Pattern Matching Logic
         if (seq5 === "BSBBS") {
             predResult = "BIG";
         } else if (seq5 === "SBSSB") {
@@ -95,7 +91,6 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // HIGH ACCURACY NUMBER PREDICTION
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
@@ -128,133 +123,135 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
+        console.log('[SYSTEM] Fetching data via ScrapingAnt...');
+        const scraperUrl = `https://api.scrapingant.com/v1/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=true`;
         
-        const response = await axios.get(scraperUrl, { 
-            timeout: 25000,
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
+        const response = await axios.get(scraperUrl, { timeout: 20000 });
         
-        let data = response.data;
-        if (data && data.content) {
-            try { data = JSON.parse(data.content); } catch (e) {}
+        let rawContent = response.data.content || response.data;
+        if (typeof rawContent === 'string') {
+            try {
+                rawContent = JSON.parse(rawContent);
+            } catch (e) {
+                console.error('[PARSING ERROR]: Could not parse JSON from ScrapingAnt response');
+                return;
+            }
         }
 
-        let list = data?.data?.list || data?.list || data;
+        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
-        if (Array.isArray(list) && list.length > 0) {
-            let lastItem = list[0];
-            let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
-            let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-            let actualColor = (actualNum === 0 || actualNum === 5) ? "VIOLET" : (actualNum >= 5 ? "GREEN" : "RED");
-            let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
-            
-            let nextPeriod = String(BigInt(actualPeriod) + 1n);
-            let dynamicStatusMsg = "";
+        if (!list || !Array.isArray(list) || list.length === 0) {
+            console.log('[SYSTEM] Received empty list from API.');
+            return;
+        }
 
-            if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
-                let isResultHit = (lastPredictedResult === actualResult);
-                let isNumberHit = lastPredictedNumbers.includes(actualNum);
-                let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
+        let lastItem = list[0];
+        let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
+        let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
+        let actualColor = (actualNum === 0 || actualNum === 5) ? "VIOLET" : (actualNum >= 5 ? "GREEN" : "RED");
+        let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue);
+        
+        let nextPeriod = String(BigInt(actualPeriod) + 1n);
+        let dynamicStatusMsg = "";
 
-                let currentLevelExecuted = maintenanceLevel;
+        if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+            let isResultHit = (lastPredictedResult === actualResult);
+            let isNumberHit = lastPredictedNumbers.includes(actualNum);
+            let isColorHit = (lastPredictedColor === actualColor) || (actualColor === "VIOLET");
 
-                if (isResultHit) {
-                    totalWins++;
+            let currentLevelExecuted = maintenanceLevel;
+
+            if (isResultHit) {
+                totalWins++;
+                consecLosses = 0;
+
+                if (isResultHit && isNumberHit && isColorHit) {
+                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
+                } 
+                else if (isResultHit && isNumberHit) {
+                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " JACKPOT WINNER** 🏆";
+                } 
+                else if (isResultHit && isColorHit) {
+                    dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " WINNER CONGRATULATIONS** 🏆";
+                } 
+                else {
+                    dynamicStatusMsg = "🏆 **" + actualResult + " WIN** 🏆";
+                }
+
+                prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
+                maintenanceLevel = 1;
+
+            } else {
+                totalLosses++;
+                consecLosses++;
+
+                dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
+
+                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
+                maintenanceLevel++;
+
+                if (consecLosses >= 6) {
+                    cooldownCounter = 5;
                     consecLosses = 0;
-
-                    if (isResultHit && isNumberHit && isColorHit) {
-                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " " + actualColor + " JACKPOT WINNERS** 🏆";
-                    } 
-                    else if (isResultHit && isNumberHit) {
-                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualNum + " JACKPOT WINNER** 🏆";
-                    } 
-                    else if (isResultHit && isColorHit) {
-                        dynamicStatusMsg = "🏆 **" + actualResult + " " + actualColor + " WINNER CONGRATULATIONS** 🏆";
-                    } 
-                    else {
-                        dynamicStatusMsg = "🏆 **" + actualResult + " WIN** 🏆";
-                    }
-
-                    prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                     maintenanceLevel = 1;
-
-                } else {
-                    totalLosses++;
-                    consecLosses++;
-
-                    dynamicStatusMsg = "🎲 **RESULT: " + actualResult + " (" + actualNum + ")**";
-
-                    prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
-                    maintenanceLevel++;
-
-                    if (consecLosses >= 6) {
-                        cooldownCounter = 5;
-                        consecLosses = 0;
-                        maintenanceLevel = 1;
-                        await bot.sendMessage(CHANNEL_ID, "⚠️ **6 CONTINUOUS LOSSES DETECTED!**\n🛑 Bot is taking a break for 5 predictions to prevent loss during bad pattern trend.", { parse_mode: 'Markdown' });
-                    }
-
-                    if (maintenanceLevel > 8) maintenanceLevel = 1;
+                    await bot.sendMessage(CHANNEL_ID, "⚠️ **6 CONTINUOUS LOSSES DETECTED!**\n🛑 Bot is taking a break for 5 predictions to prevent loss during bad pattern trend.", { parse_mode: 'Markdown' });
                 }
 
-                if (prediction60History.length > 60) {
-                    prediction60History.pop();
-                }
+                if (maintenanceLevel > 8) maintenanceLevel = 1;
             }
 
-            if (nextPeriod !== lastSentPeriod) {
-                if (cooldownCounter > 0) {
-                    cooldownCounter--;
-                    console.log(`[STOP SYSTEM] Cooldown active. Remaining predictions to skip: ${cooldownCounter}`);
-                    lastSentPeriod = nextPeriod;
-                    return;
-                }
+            if (prediction60History.length > 60) {
+                prediction60History.pop();
+            }
+        }
 
-                let pred = deepHistoryPatternEngine(list);
-                
-                let activeLevel = maintenanceLevel;
-                let nextLevel = (activeLevel >= 8) ? 1 : activeLevel + 1;
-                
-                let currentLevelInfo = levelData[activeLevel] || levelData[1];
-                let nextLevelInfo = levelData[nextLevel] || levelData[1];
-
-                let msg = "👑 **KING PREDICTION**\n" +
-                          "⚡ **WinGo 30S** ⚡\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n" +
-                          "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                          "🎯 **TARGET:** **" + pred.predResult + "**\n" +
-                          "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
-                          "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                          "💰 **LEVEL AMOUNT:** **Level " + activeLevel + " (" + currentLevelInfo.name + ")**\n" +
-                          "👉 **NEXT BET:** **Level " + nextLevel + " (" + nextLevelInfo.name + ")** *(If Level " + activeLevel + " Losses)*\n" +
-                          "━━━━━━━━━━━━━━━━━━━━━\n";
-
-                if (dynamicStatusMsg !== "") {
-                    msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
-                }
-
-                msg += "🏆 **WINS:** " + totalWins + "\n" +
-                       "💔 **LOSSES:** " + totalLosses + "\n" +
-                       "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                       "🔗 **Register Link:**\n" + REGISTER_LINK;
-
-                await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
-
+        if (nextPeriod !== lastSentPeriod) {
+            if (cooldownCounter > 0) {
+                cooldownCounter--;
+                console.log(`[STOP SYSTEM] Cooldown active. Remaining predictions to skip: ${cooldownCounter}`);
                 lastSentPeriod = nextPeriod;
-                lastPredictedPeriod = nextPeriod;
-                lastPredictedResult = pred.predResult;
-                lastPredictedNumbers = pred.targetNumbers;
-                lastPredictedColor = pred.mainColor;
-                console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
+                return;
             }
+
+            let pred = deepHistoryPatternEngine(list);
+            
+            let activeLevel = maintenanceLevel;
+            let nextLevel = (activeLevel >= 8) ? 1 : activeLevel + 1;
+            
+            let currentLevelInfo = levelData[activeLevel] || levelData[1];
+            let nextLevelInfo = levelData[nextLevel] || levelData[1];
+
+            let msg = "👑 **KING PREDICTION**\n" +
+                      "⚡ **WinGo 30S** ⚡\n" +
+                      "━━━━━━━━━━━━━━━━━━━━━\n" +
+                      "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                      "🎯 **TARGET:** **" + pred.predResult + "**\n" +
+                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                      "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                      "💰 **LEVEL AMOUNT:** **Level " + activeLevel + " (" + currentLevelInfo.name + ")**\n" +
+                      "👉 **NEXT BET:** **Level " + nextLevel + " (" + nextLevelInfo.name + ")** *(If Level " + activeLevel + " Losses)*\n" +
+                      "━━━━━━━━━━━━━━━━━━━━━\n";
+
+            if (dynamicStatusMsg !== "") {
+                msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
+            }
+
+            msg += "🏆 **WINS:** " + totalWins + "\n" +
+                   "💔 **LOSSES:** " + totalLosses + "\n" +
+                   "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+                   "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+            await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+
+            lastSentPeriod = nextPeriod;
+            lastPredictedPeriod = nextPeriod;
+            lastPredictedResult = pred.predResult;
+            lastPredictedNumbers = pred.targetNumbers;
+            lastPredictedColor = pred.mainColor;
+            console.log("[SUCCESS] Prediction Sent: " + nextPeriod);
         }
     } catch (error) {
-        if (error.response && error.response.status === 409) {
-            console.log('[SCRAPINGANT 409 CONFLICT]: Waiting for next interval...');
-        } else {
-            console.error('[FETCH ERROR]:', error.message);
-        }
+        console.error('[FETCH ERROR]:', error.message);
     }
 }
 
