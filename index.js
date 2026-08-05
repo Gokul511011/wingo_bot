@@ -5,7 +5,7 @@ const express = require('express');
 // Express Server for Render Ping (24/7 Active)
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Direct Fetch Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S TLS Bypass Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -109,13 +109,25 @@ function generateOutput(predResult, allNumbers) {
 
 async function fetchWinGoData() {
     try {
-        // Direct Request without Scrape.do Proxy
-        const response = await axios.get(TARGET_URL, {
+        // Direct Axios Request with Cloudflare Bypass Headers
+        const response = await axios({
+            method: 'get',
+            url: TARGET_URL,
             timeout: 10000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://www.rajastake7.com/'
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Referer': 'https://www.rajastake7.com/',
+                'Origin': 'https://www.rajastake7.com',
+                'Sec-Ch-Ua': '"Not-A.Brand";v="99", "Chromium";v="124", "Google Chrome";v="124"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'cross-site',
+                'Priority': 'u=1, i'
             }
         });
 
@@ -196,13 +208,13 @@ async function fetchWinGoData() {
                 lastPredictedPeriod = nextPeriod;
                 lastPredictedResult = pred.predResult;
                 lastPredictedNumber = pred.targetNumber;
-                console.log("[SUCCESS] Direct Fetch WinGo Prediction Sent: " + nextPeriod);
+                console.log("[SUCCESS] TLS Bypass WinGo Prediction Sent: " + nextPeriod);
             }
         }
     } catch (error) {
-        console.error('[DIRECT FETCH ERROR]:', error.message);
+        console.error('[FETCH ERROR]:', error.message);
     }
 }
 
-console.log("WinGo 30S Direct Engine Active...");
+console.log("WinGo 30S TLS Bypass Engine Active...");
 setInterval(fetchWinGoData, 15000);
