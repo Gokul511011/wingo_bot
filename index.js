@@ -11,7 +11,7 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
-// Updated to WinGo 30S API
+// WinGo 30S API
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -72,7 +72,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Deep Pattern & Enhanced Number Analysis Engine
+// Deep Pattern & 3 Advanced Winning Patterns Engine
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -120,12 +120,14 @@ function deepHistoryPatternEngine(history, currentLevel) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // ENHANCED NUMBER SELECTION ALGORITHM
+        // =========================================================
+        // ENHANCED NUMBER SELECTION WITH 3 ADVANCED WINNING PATTERNS
+        // =========================================================
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberScores = {};
         candidateNums.forEach(n => numberScores[n] = 0);
 
-        // Weighted recency & frequency scan over last 60 rounds
+        // 1. Recency & Frequency Weighting (Base Score)
         for (let i = 0; i < Math.min(60, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
@@ -134,10 +136,37 @@ function deepHistoryPatternEngine(history, currentLevel) {
             }
         }
 
-        // Penalty for numbers that appeared in the very last 2 rounds (Avoid instant repeat)
-        if (candidateNums.includes(allNumbers[0])) numberScores[allNumbers[0]] -= 20;
-        if (candidateNums.includes(allNumbers[1])) numberScores[allNumbers[1]] -= 10;
+        // --- PATTERN 1: MIRROR NUMBER PATTERN (Pairs: 0-5, 1-6, 2-7, 3-8, 4-9) ---
+        // Checks if the mirror pair of last 2 rounds' numbers falls into candidate numbers
+        const mirrorMap = { 0: 5, 5: 0, 1: 6, 6: 1, 2: 7, 7: 2, 3: 8, 8: 3, 4: 9, 9: 4 };
+        let lastMirrorTarget = mirrorMap[allNumbers[0]];
+        let prevMirrorTarget = mirrorMap[allNumbers[1]];
 
+        if (candidateNums.includes(lastMirrorTarget)) {
+            numberScores[lastMirrorTarget] += 45; // High boost for recent mirror trigger
+        }
+        if (candidateNums.includes(prevMirrorTarget)) {
+            numberScores[prevMirrorTarget] += 25;
+        }
+
+        // --- PATTERN 2: COLD NUMBER RECOVERY (Over last 30 rounds) ---
+        let last30 = allNumbers.slice(0, 30);
+        candidateNums.forEach(n => {
+            if (!last30.includes(n)) {
+                numberScores[n] += 50; // Boost missing/cold numbers due for recovery
+            }
+        });
+
+        // --- PATTERN 3: CONSECUTIVE REPEAT & SKIP PATTERN ---
+        if (allNumbers[0] === allNumbers[1]) {
+            // Double repeat observed! Deduct current repeating number and boost other candidates
+            let repeatNum = allNumbers[0];
+            if (candidateNums.includes(repeatNum)) {
+                numberScores[repeatNum] -= 35; 
+            }
+        }
+
+        // Sort candidates based on total combined score
         let sortedNumbers = candidateNums.sort((a, b) => numberScores[b] - numberScores[a]);
         let matchedNumbers = sortedNumbers.slice(0, 2);
 
