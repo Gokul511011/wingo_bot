@@ -16,14 +16,14 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Stable Precision Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Continuous Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Fetching Data...**", { parse_mode: 'Markdown' });
+        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
     } catch (e) {
-        console.error("Startup Telegram Notification Error:", e.message);
+        console.error("Startup Notification Error:", e.message);
     }
 });
 
@@ -35,6 +35,7 @@ let lastPredictedPeriod = null;
 
 let totalWins = 0;
 let totalLosses = 0;
+let totalJackpots = 0;
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
@@ -70,7 +71,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Pattern Analysis Engine with Level-5 Guard
+// Continuous Pattern Analysis Engine
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -97,10 +98,10 @@ function deepHistoryPatternEngine(history, currentLevel) {
             let seq5 = allResults.slice(0, 5).join("");
             let mirrorSeq5 = invertPattern(seq5);
 
-            for (let i = 1; i < Math.min(60, allResults.length - 6); i++) {
+            for (let i = 1; i < Math.min(100, allResults.length - 6); i++) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
                 let nextItem = allResults[i - 1];
-                let weight = i < 10 ? 5 : (i < 30 ? 2 : 1);
+                let weight = i < 15 ? 5 : (i < 40 ? 2 : 1);
 
                 if (histSeq5 === seq5) {
                     if (nextItem === "B") scoreB += (2 * weight);
@@ -121,10 +122,10 @@ function deepHistoryPatternEngine(history, currentLevel) {
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 0; i < Math.min(30, allNumbers.length); i++) {
+        for (let i = 0; i < Math.min(50, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
-                let recencyWeight = (30 - i);
+                let recencyWeight = (50 - i);
                 numberFrequency[num] = (numberFrequency[num] || 0) + recencyWeight;
             }
         }
@@ -159,7 +160,6 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // 8 Seconds Timeout to ensure full response without blocking
         try {
             const directRes = await axios.get(TARGET_URL, {
                 timeout: 8000,
@@ -175,9 +175,7 @@ async function fetchWinGoData() {
                 const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
                 const response = await axios.get(scraperUrl, { timeout: 8000 });
                 rawContent = response.data;
-            } catch (e) {
-                console.error("Scraper Error:", e.message);
-            }
+            } catch (e) {}
         }
 
         if (typeof rawContent === 'string') {
@@ -221,9 +219,11 @@ async function fetchWinGoData() {
                 totalProfitLoss += winAmount;
 
                 if (isNumberHit && isColorHit) {
+                    totalJackpots++;
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " JACKPOT WINNERS** 🏆";
                 } 
                 else if (isNumberHit) {
+                    totalJackpots++;
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
                 } 
                 else if (isColorHit) {
@@ -246,13 +246,15 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
+            // 60 சுற்றுகள் முடிந்த பின் அறிக்கை அனுப்பிவிட்டு தானாக அடுத்த சுற்றைத் தொடரும் (Non-stop)
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
-                let summaryMsg = "📊 **60 PREDICTIONS TEST SUMMARY REPORT** 📊\n" +
+                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
+                                 "💥 **TOTAL JACKPOTS:** " + totalJackpots + "\n" +
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
@@ -265,13 +267,15 @@ async function fetchWinGoData() {
                     summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
                 });
 
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Resetting stats for the next 60 rounds!**";
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
+                // Reset counters for next batch without stopping process
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
+                totalJackpots = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
                 prediction60History = [];
@@ -282,22 +286,18 @@ async function fetchWinGoData() {
             let pred = deepHistoryPatternEngine(list, maintenanceLevel);
             
             let activeLevel = maintenanceLevel;
-            let nextLevel = activeLevel + 1;
-            
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
-            let nextBetName = levelData[nextLevel]?.name || ("₹" + getBetVal(nextLevel));
 
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (60-Run Test)** ⚡\n" +
+                      "⚡ **WinGo 30S (Non-Stop Predictions)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎯 **TARGET:** **" + pred.predResult + "**\n" +
                       "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
                       "🎨 **COLOUR:** " + pred.colorStr + "\n" +
                       "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
-                      "👉 **IF LOSS NEXT BET:** **" + nextBetName + " (Level " + nextLevel + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -305,7 +305,7 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "🏆 **WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
@@ -317,7 +317,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[STABLE 8S] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
@@ -329,5 +329,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// Polling interval set to 3 seconds for optimum balance
 setInterval(fetchWinGoData, 3000);
