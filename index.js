@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
@@ -6,7 +5,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Optimized Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Non-Stop High Accuracy Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -62,43 +61,38 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Optimized Pattern Analysis Engine (Level Skip Protection)
-function deepHistoryPatternEngine(history) {
+// Fixed Pattern Engine - Anti Level-7 & Trend Flip Guard
+function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
 
         let predResult = "";
 
-        // 1. Long Streak Protection (B-B-B-B or S-S-S-S)
-        if (allResults[0] === allResults[1] && allResults[1] === allResults[2] && allResults[2] === allResults[3]) {
-            predResult = allResults[0] === "B" ? "BIG" : "SMALL"; // Follow the streak trend
-        }
-        // 2. Strict 3-Consecutive Rule
+        // Level 5 தாண்டினால் Trend தவறாகப் போகிறது என உணர்ந்து Trend Reverse செய்யும் Guard
+        if (currentLevel >= 5) {
+            let lastItem = allResults[0];
+            predResult = lastItem === "B" ? "SMALL" : "BIG"; // Trend Switch
+        } 
         else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
-        // 3. Strict Alternate / Zig-Zag Rule (B-S-B-S)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 4. Double-Double Pattern (B-B-S-S)
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
-        // 5. Deep Pattern Matching with High Recency Weight
         else {
             let scoreB = 0;
             let scoreS = 0;
             let seq5 = allResults.slice(0, 5).join("");
             let mirrorSeq5 = invertPattern(seq5);
 
-            for (let i = 1; i < Math.min(80, allResults.length - 6); i++) {
+            for (let i = 1; i < Math.min(60, allResults.length - 6); i++) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
                 let nextItem = allResults[i - 1];
-                
-                // Recent history gets significantly higher weight to stop high-level loss
-                let weight = i < 10 ? 6 : (i < 25 ? 3 : 1);
+                let weight = i < 10 ? 5 : (i < 30 ? 2 : 1);
 
                 if (histSeq5 === seq5) {
                     if (nextItem === "B") scoreB += (2 * weight);
@@ -115,15 +109,14 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // Number Selection Optimization based on recent hits
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 0; i < Math.min(25, allNumbers.length); i++) {
+        for (let i = 0; i < Math.min(30, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
-                let recencyWeight = (25 - i);
+                let recencyWeight = (30 - i);
                 numberFrequency[num] = (numberFrequency[num] || 0) + recencyWeight;
             }
         }
@@ -158,6 +151,7 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
+        // Non-Stop Logic: Direct Fetch Fail ஆனால் ScrapingAnt
         try {
             const directRes = await axios.get(TARGET_URL, {
                 timeout: 8000,
@@ -169,9 +163,13 @@ async function fetchWinGoData() {
             });
             rawContent = directRes.data;
         } catch (err) {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-            const response = await axios.get(scraperUrl, { timeout: 12000 });
-            rawContent = response.data;
+            try {
+                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
+                const response = await axios.get(scraperUrl, { timeout: 10000 });
+                rawContent = response.data;
+            } catch (e) {
+                console.error("Fetch Connection Retry...");
+            }
         }
 
         if (typeof rawContent === 'string') {
@@ -273,7 +271,7 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = deepHistoryPatternEngine(list);
+            let pred = deepHistoryPatternEngine(list, maintenanceLevel);
             
             let activeLevel = maintenanceLevel;
             let nextLevel = activeLevel + 1;
@@ -311,7 +309,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[RUNNING] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[NON-STOP RUN] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
@@ -320,6 +318,7 @@ async function fetchWinGoData() {
     }
 }
 
+// Process Error Guard to stop script crashing
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
