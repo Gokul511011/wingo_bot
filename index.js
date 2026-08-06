@@ -11,17 +11,18 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+// Updated to WinGo 1Min API
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Continuous Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 1M Precision Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
+        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo 1M Bot Live & Fetching Data...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
@@ -71,7 +72,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Continuous Pattern Analysis Engine
+// Deep Pattern Analysis Engine Optimized for 1Min Stability
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -246,11 +247,10 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60 சுற்றுகள் முடிந்த பின் அறிக்கை அனுப்பிவிட்டு தானாக அடுத்த சுற்றைத் தொடரும் (Non-stop)
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
-                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
+                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT (1M)** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
@@ -271,7 +271,6 @@ async function fetchWinGoData() {
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
-                // Reset counters for next batch without stopping process
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
@@ -291,7 +290,7 @@ async function fetchWinGoData() {
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Non-Stop Predictions)** ⚡\n" +
+                      "⚡ **WinGo 1M (Non-Stop Predictions)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎯 **TARGET:** **" + pred.predResult + "**\n" +
@@ -317,7 +316,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[WIN GO 1M] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
