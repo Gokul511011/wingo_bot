@@ -270,9 +270,6 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            // Duplicate Message தவிர்க்க உடனே Lock பண்ணப்படுகிறது
-            lastSentPeriod = nextPeriod;
-
             let pred = deepHistoryPatternEngine(list, maintenanceLevel);
             
             let activeLevel = maintenanceLevel;
@@ -306,6 +303,7 @@ async function fetchWinGoData() {
 
             await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
 
+            lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
