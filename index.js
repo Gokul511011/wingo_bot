@@ -2,10 +2,10 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render
+// Express Server for Render Uptime
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Ultra-Fast Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Ultra-Fast Precision Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -61,6 +61,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
+// Pattern Analysis Engine with Level-7 Protection & Trend Reversal
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -68,6 +69,7 @@ function deepHistoryPatternEngine(history, currentLevel) {
 
         let predResult = "";
 
+        // Level 5 தாண்டினால் Loss பெருகுவதைத் தடுக்க Trend Reverse செய்யும் Guard
         if (currentLevel >= 5) {
             let lastItem = allResults[0];
             predResult = lastItem === "B" ? "SMALL" : "BIG";
@@ -149,10 +151,10 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Fast Direct Request with short 3-second timeout
+        // Ultra Fast Direct Request (1.5s Timeout)
         try {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 3000,
+                timeout: 1500,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
@@ -163,7 +165,7 @@ async function fetchWinGoData() {
         } catch (err) {
             try {
                 const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-                const response = await axios.get(scraperUrl, { timeout: 5000 });
+                const response = await axios.get(scraperUrl, { timeout: 3000 });
                 rawContent = response.data;
             } catch (e) {}
         }
@@ -234,6 +236,7 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
+            // 60-Prediction Batch Summary Logic
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
@@ -305,7 +308,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[FAST RUN] Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[ULTRA FAST] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
@@ -314,8 +317,9 @@ async function fetchWinGoData() {
     }
 }
 
+// Global Process Catchers for Continuous Uptime
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// High Speed Check Every 3 Seconds
-setInterval(fetchWinGoData, 3000);
+// Fast Checking Loop Every 1.5 Seconds
+setInterval(fetchWinGoData, 1500);
