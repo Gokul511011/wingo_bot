@@ -16,7 +16,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Ultra-Fast Precision Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Stable Precision Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -70,7 +70,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Pattern Analysis Engine with Level-5 Trend Switch Guard
+// Pattern Analysis Engine with Level-5 Guard
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -159,9 +159,10 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
+        // 8 Seconds Timeout to ensure full response without blocking
         try {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 1500,
+                timeout: 8000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
@@ -172,9 +173,11 @@ async function fetchWinGoData() {
         } catch (err) {
             try {
                 const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-                const response = await axios.get(scraperUrl, { timeout: 3000 });
+                const response = await axios.get(scraperUrl, { timeout: 8000 });
                 rawContent = response.data;
-            } catch (e) {}
+            } catch (e) {
+                console.error("Scraper Error:", e.message);
+            }
         }
 
         if (typeof rawContent === 'string') {
@@ -184,7 +187,6 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("[FETCH] Waiting for API response data...");
             isFetching = false;
             return;
         }
@@ -315,7 +317,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[ULTRA FAST] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[STABLE 8S] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
@@ -327,4 +329,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 1500);
+// Polling interval set to 3 seconds for optimum balance
+setInterval(fetchWinGoData, 3000);
