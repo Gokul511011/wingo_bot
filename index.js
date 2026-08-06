@@ -1,3 +1,4 @@
+
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
@@ -5,7 +6,7 @@ const express = require('express');
 // Express Server for Render
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Unlimited Engine with 60-Prediction Summary Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Optimized Engine Active!'));
 app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
@@ -29,11 +30,10 @@ let totalLosses = 0;
 let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 
-let predictionCount = 0; // 60-Prediction Counter
-let maxLevelReached = 1; // Tracks highest level in the 60-run set
-let prediction60History = []; // Array to store last 60 results
+let predictionCount = 0;
+let maxLevelReached = 1;
+let prediction60History = [];
 
-// Unlimited Bet Level Math
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
@@ -47,10 +47,9 @@ const levelData = {
 
 function getBetVal(level) {
     if (levelData[level]) return levelData[level].val;
-    return Math.pow(3, level - 1); // 8 லெவலுக்கு மேல போனாலும் தானாக கணக்கிடும்
+    return Math.pow(3, level - 1);
 }
 
-// Exact Color & Number Mapping
 function getNumberColor(num) {
     if ([2, 4, 6, 8].includes(num)) return "RED";
     if ([1, 3, 7, 9].includes(num)) return "GREEN";
@@ -63,7 +62,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Pattern Analysis Engine
+// Optimized Pattern Analysis Engine (Level Skip Protection)
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -71,25 +70,35 @@ function deepHistoryPatternEngine(history) {
 
         let predResult = "";
 
-        if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
+        // 1. Long Streak Protection (B-B-B-B or S-S-S-S)
+        if (allResults[0] === allResults[1] && allResults[1] === allResults[2] && allResults[2] === allResults[3]) {
+            predResult = allResults[0] === "B" ? "BIG" : "SMALL"; // Follow the streak trend
+        }
+        // 2. Strict 3-Consecutive Rule
+        else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
             predResult = allResults[0] === "B" ? "BIG" : "SMALL";
         }
+        // 3. Strict Alternate / Zig-Zag Rule (B-S-B-S)
         else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 4. Double-Double Pattern (B-B-S-S)
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 5. Deep Pattern Matching with High Recency Weight
         else {
             let scoreB = 0;
             let scoreS = 0;
             let seq5 = allResults.slice(0, 5).join("");
             let mirrorSeq5 = invertPattern(seq5);
 
-            for (let i = 1; i < Math.min(60, allResults.length - 6); i++) {
+            for (let i = 1; i < Math.min(80, allResults.length - 6); i++) {
                 let histSeq5 = allResults.slice(i, i + 5).join("");
                 let nextItem = allResults[i - 1];
-                let weight = i < 20 ? 4 : (i < 40 ? 2 : 1);
+                
+                // Recent history gets significantly higher weight to stop high-level loss
+                let weight = i < 10 ? 6 : (i < 25 ? 3 : 1);
 
                 if (histSeq5 === seq5) {
                     if (nextItem === "B") scoreB += (2 * weight);
@@ -106,14 +115,15 @@ function deepHistoryPatternEngine(history) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
+        // Number Selection Optimization based on recent hits
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
         let numberFrequency = {};
         candidateNums.forEach(n => numberFrequency[n] = 0);
 
-        for (let i = 0; i < Math.min(30, allNumbers.length); i++) {
+        for (let i = 0; i < Math.min(25, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
-                let recencyWeight = (30 - i);
+                let recencyWeight = (25 - i);
                 numberFrequency[num] = (numberFrequency[num] || 0) + recencyWeight;
             }
         }
@@ -146,16 +156,11 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-
         let rawContent = null;
 
         try {
-            const response = await axios.get(scraperUrl, { timeout: 15000 });
-            rawContent = response.data;
-        } catch (err) {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 10000,
+                timeout: 8000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
@@ -163,6 +168,10 @@ async function fetchWinGoData() {
                 }
             });
             rawContent = directRes.data;
+        } catch (err) {
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
+            const response = await axios.get(scraperUrl, { timeout: 12000 });
+            rawContent = response.data;
         }
 
         if (typeof rawContent === 'string') {
@@ -231,7 +240,6 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60 Predictions முடிவடைந்ததும் Report அனுப்பும் Logic
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
@@ -255,7 +263,6 @@ async function fetchWinGoData() {
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
-                // Stats Reset for Next 60 Batch
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
@@ -304,7 +311,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[60-TEST RUN] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[RUNNING] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
@@ -312,5 +319,8 @@ async function fetchWinGoData() {
         isFetching = false;
     }
 }
+
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
 setInterval(fetchWinGoData, 10000);
