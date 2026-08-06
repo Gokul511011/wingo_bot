@@ -11,18 +11,18 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
 
-// Updated to WinGo 1Min API
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_1M/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+// Updated to WinGo 30S API
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 1M Precision Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Precision Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo 1M Bot Live & Fetching Data...**", { parse_mode: 'Markdown' });
+        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo 30S Precision Bot Live & Fetching Data...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
@@ -72,7 +72,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Deep Pattern Analysis Engine Optimized for 1Min Stability
+// Deep Pattern & Enhanced Number Analysis Engine
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -80,7 +80,8 @@ function deepHistoryPatternEngine(history, currentLevel) {
 
         let predResult = "";
 
-        if (currentLevel >= 5) {
+        // EARLY TREND SWITCH: Level 4 loss (Level >= 4) - Reverses prediction immediately
+        if (currentLevel >= 4) {
             let lastItem = allResults[0];
             predResult = lastItem === "B" ? "SMALL" : "BIG";
         } 
@@ -119,19 +120,25 @@ function deepHistoryPatternEngine(history, currentLevel) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
+        // ENHANCED NUMBER SELECTION ALGORITHM
         let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
-        let numberFrequency = {};
-        candidateNums.forEach(n => numberFrequency[n] = 0);
+        let numberScores = {};
+        candidateNums.forEach(n => numberScores[n] = 0);
 
-        for (let i = 0; i < Math.min(50, allNumbers.length); i++) {
+        // Weighted recency & frequency scan over last 60 rounds
+        for (let i = 0; i < Math.min(60, allNumbers.length); i++) {
             let num = allNumbers[i];
             if (candidateNums.includes(num)) {
-                let recencyWeight = (50 - i);
-                numberFrequency[num] = (numberFrequency[num] || 0) + recencyWeight;
+                let weight = (60 - i); 
+                numberScores[num] += weight;
             }
         }
 
-        let sortedNumbers = candidateNums.sort((a, b) => numberFrequency[b] - numberFrequency[a]);
+        // Penalty for numbers that appeared in the very last 2 rounds (Avoid instant repeat)
+        if (candidateNums.includes(allNumbers[0])) numberScores[allNumbers[0]] -= 20;
+        if (candidateNums.includes(allNumbers[1])) numberScores[allNumbers[1]] -= 10;
+
+        let sortedNumbers = candidateNums.sort((a, b) => numberScores[b] - numberScores[a]);
         let matchedNumbers = sortedNumbers.slice(0, 2);
 
         let numbersStr = matchedNumbers.join(", ");
@@ -250,7 +257,7 @@ async function fetchWinGoData() {
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
-                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT (1M)** 📊\n" +
+                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT (30S)** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **TOTAL WINS:** " + totalWins + "\n" +
@@ -290,7 +297,7 @@ async function fetchWinGoData() {
             let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
             let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 1M (Non-Stop Predictions)** ⚡\n" +
+                      "⚡ **WinGo 30S (Non-Stop Predictions)** ⚡\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                       "🎯 **TARGET:** **" + pred.predResult + "**\n" +
@@ -316,7 +323,7 @@ async function fetchWinGoData() {
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[WIN GO 1M] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[WIN GO 30S] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
