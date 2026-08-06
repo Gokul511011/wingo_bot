@@ -5,8 +5,6 @@ const express = require('express');
 // Express Server for Render Uptime
 const app = express();
 const PORT = process.env.PORT || 10000;
-app.get('/', (req, res) => res.send('WinGo 30S Ultra-Fast Precision Engine Active!'));
-app.listen(PORT, '0.0.0.0', () => console.log("Server running on port " + PORT));
 
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
@@ -17,6 +15,17 @@ const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssu
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+app.get('/', (req, res) => res.send('WinGo 30S Ultra-Fast Precision Engine Active!'));
+
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log("Server running on port " + PORT);
+    try {
+        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Fetching Data...**", { parse_mode: 'Markdown' });
+    } catch (e) {
+        console.error("Startup Telegram Notification Error:", e.message);
+    }
+});
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
@@ -61,7 +70,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Pattern Analysis Engine with Level-7 Protection & Trend Reversal
+// Pattern Analysis Engine with Level-5 Trend Switch Guard
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -69,7 +78,6 @@ function deepHistoryPatternEngine(history, currentLevel) {
 
         let predResult = "";
 
-        // Level 5 தாண்டினால் Loss பெருகுவதைக் தடுக்க Trend Reverse செய்யும் Guard
         if (currentLevel >= 5) {
             let lastItem = allResults[0];
             predResult = lastItem === "B" ? "SMALL" : "BIG";
@@ -151,7 +159,6 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Ultra Fast Direct Request (1.5s Timeout)
         try {
             const directRes = await axios.get(TARGET_URL, {
                 timeout: 1500,
@@ -177,6 +184,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
+            console.log("[FETCH] Waiting for API response data...");
             isFetching = false;
             return;
         }
@@ -236,7 +244,6 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60-Prediction Batch Summary Logic
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
@@ -317,9 +324,7 @@ async function fetchWinGoData() {
     }
 }
 
-// Global Process Catchers for Continuous Uptime
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// Fast Checking Loop Every 1.5 Seconds
 setInterval(fetchWinGoData, 1500);
