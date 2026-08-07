@@ -17,15 +17,13 @@ let currentLevel = 1;
 let maxLevelReached = 1;
 let netProfitLoss = 0;
 
-// Batch Data History Storage (Stores full details of 60 rounds)
+// Batch Data History Storage
 let currentBatchHistory = [];
+let recentNumbersHistory = [];
 
-// Helper function to send message to Telegram
+// Helper function to send Telegram Message
 async function sendTelegramMessage(message) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-        console.log("Telegram credentials missing.");
-        return;
-    }
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: TELEGRAM_CHAT_ID,
@@ -33,11 +31,11 @@ async function sendTelegramMessage(message) {
             parse_mode: 'Markdown'
         });
     } catch (error) {
-        console.error("Error sending Telegram message:", error.message);
+        console.error("Telegram Send Error:", error.message);
     }
 }
 
-// Function to reset batch stats after reporting
+// Function to reset batch stats
 function resetBatchStats() {
     totalWins = 0;
     totalJackpots = 0;
@@ -47,30 +45,63 @@ function resetBatchStats() {
     currentBatchHistory = [];
 }
 
-// Route to process WinGo 30S Data and Predictions
+// Strict 2-Number Target Logic
+function getExactTwoTargetNumbers(history) {
+    if (history.length < 5) return [7, 9];
+
+    const last5 = history.slice(-5);
+    const lastNum = history[history.length - 1];
+    
+    let bigCount = 0;
+    let smallCount = 0;
+
+    last5.forEach(num => {
+        if (num >= 5) bigCount++; else smallCount++;
+    });
+
+    const isBigTrend = bigCount >= smallCount;
+
+    if (isBigTrend) {
+        if (lastNum === 5 || lastNum === 0) return [7, 9];
+        if (lastNum === 6 || lastNum === 1) return [6, 8];
+        if (lastNum === 7 || lastNum === 2) return [7, 9];
+        return [5, 8];
+    } else {
+        if (lastNum === 0 || lastNum === 5) return [1, 3];
+        if (lastNum === 1 || lastNum === 6) return [0, 2];
+        if (lastNum === 2 || lastNum === 7) return [1, 3];
+        return [0, 4];
+    }
+}
+
+// Webhook Route
 app.post('/webhook', async (req, res) => {
     try {
         const data = req.body;
         
-        // Ensure valid input payload
         if (!data || !data.period || data.resultNumber === undefined) {
-            return res.status(400).send({ status: 'Invalid Data' });
+            return res.status(400).send([0, 0]);
         }
 
         totalPredictions++;
         const currentBatchNumber = totalPredictions;
+        const resultNum = parseInt(data.resultNumber);
 
-        // Prediction Logic (Existing Winning Patterns + Cold Recoveries)
+        recentNumbersHistory.push(resultNum);
+        if (recentNumbersHistory.length > 20) recentNumbersHistory.shift();
+
+        // Get ONLY 2 target numbers
+        const targetNumbers = getExactTwoTargetNumbers(recentNumbersHistory);
+
         const isWin = data.isWin || false; 
         const isJackpot = data.isJackpot || false;
         const profitAmount = data.profit || 0;
 
-        // Level Tracking
         if (isWin) {
             totalWins++;
             if (isJackpot) totalJackpots++;
             netProfitLoss += profitAmount;
-            currentLevel = 1; // Reset Level on Win
+            currentLevel = 1;
         } else {
             totalLosses++;
             netProfitLoss -= profitAmount;
@@ -80,16 +111,16 @@ app.post('/webhook', async (req, res) => {
             }
         }
 
-        // Record individual round details for the full 1-60 batch
         const roundStatus = isWin ? (isJackpot ? "💥 JACKPOT" : "✅ WIN") : "❌ LOSS";
         currentBatchHistory.push({
             batchIndex: currentBatchNumber,
             period: data.period,
             status: roundStatus,
-            level: currentLevel
+            level: currentLevel,
+            targets: targetNumbers.join(',')
         });
 
-        // Trigger report only at Multiples of 60 (60, 120, 180, etc.)
+        // Telegram Report at 60, 120, 180...
         if (totalPredictions % 60 === 0) {
             const startRange = totalPredictions - 59;
             const endRange = totalPredictions;
@@ -105,26 +136,23 @@ app.post('/webhook', async (req, res) => {
             reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
             reportText += `📝 **FULL BATCH HISTORY (${startRange}-${endRange}):**\n\n`;
 
-            // Append all 60 predictions history
             currentBatchHistory.forEach((item) => {
-                reportText += `${item.status} | Period: ${item.period} | Level: ${item.level}\n`;
+                reportText += `${item.status} | Period: ${item.period} | Targets: [${item.targets}] | Lvl: ${item.level}\n`;
             });
 
             reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
-            reportText += `🔄 Batch ${startRange}-${endRange} Completed! Stats reset for next batch.`;
+            reportText += `🔄 Batch ${startRange}-${endRange} Completed!`;
 
-            // Send Telegram summary report
             await sendTelegramMessage(reportText);
-
-            // Reset stats for the next 60 batch
             resetBatchStats();
         }
 
-        res.status(200).send({ status: 'Success', currentPrediction: totalPredictions });
+        // Returns ONLY the 2 target numbers (e.g. [7, 9] or [1, 3])
+        return res.status(200).json(targetNumbers);
 
     } catch (error) {
         console.error("Webhook Error:", error);
-        res.status(500).send({ status: 'Error', message: error.message });
+        return res.status(500).json([0, 0]);
     }
 });
 
