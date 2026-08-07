@@ -84,7 +84,7 @@ function deepHistoryPatternEngine(history) {
 
         // 1. Alternate/Zig-Zag Pattern Check (B-S-B-S or S-B-S-B)
         if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            predResult = r1 === "BIG" ? "SMALL" : "BIG"; // Continue Alternate
+            predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
         } 
         // 2. Strong Trend Continuation (B-B or S-S)
         else if (r1 === r2) {
@@ -245,15 +245,7 @@ async function fetchWinGoData() {
                                  "🔹 LEVEL 7 (₹450): " + levelWins[7] + " WINS\n" +
                                  "🔹 LEVEL 8 (₹1350): " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
-
-                let recent10 = prediction60History.slice(0, 10);
-                recent10.forEach(item => {
-                    let icon = item.status === "WIN" ? "✅" : "❌";
-                    summaryMsg += `${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
-                });
-
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
