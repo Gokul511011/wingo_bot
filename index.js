@@ -4,11 +4,11 @@ const app = express();
 
 app.use(express.json());
 
-// Direct Hardcoded Credentials
+// Direct Credentials Setup
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU";
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "-1002486828817";
 
-// Bot State & Metrics Tracking
+// Bot Metrics & Tracking
 let totalPredictions = 0;
 let totalWins = 0;
 let totalJackpots = 0;
@@ -17,16 +17,12 @@ let currentLevel = 1;
 let maxLevelReached = 1;
 let netProfitLoss = 0;
 
-// Batch Data History Storage
 let currentBatchHistory = [];
 let recentNumbersHistory = [];
 
-// Helper function to send Telegram Message
+// Send Telegram Message Helper
 async function sendTelegramMessage(message) {
-    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === "YOUR_TELEGRAM_BOT_TOKEN") {
-        console.log("❌ Telegram Credentials Missing!");
-        return;
-    }
+    if (!TELEGRAM_BOT_TOKEN) return;
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: TELEGRAM_CHAT_ID,
@@ -35,11 +31,11 @@ async function sendTelegramMessage(message) {
         });
         console.log("✅ Telegram Message Sent Successfully!");
     } catch (error) {
-        console.error("❌ Telegram Send Error:", error.response ? error.response.data : error.message);
+        console.error("❌ Telegram Send Error:", error.message);
     }
 }
 
-// Function to reset batch stats
+// Reset Stats for Every 60 Batch
 function resetBatchStats() {
     totalWins = 0;
     totalJackpots = 0;
@@ -49,9 +45,11 @@ function resetBatchStats() {
     currentBatchHistory = [];
 }
 
-// Strict 2-Number Target Logic
-function getExactTwoTargetNumbers(history) {
-    if (history.length < 5) return [7, 9];
+// Prediction Logic: Calculates Big/Small Trend + Exact 2 Target Numbers
+function getTrendAndTwoTargets(history) {
+    if (history.length < 5) {
+        return { trend: "BIG", targets: [7, 9] };
+    }
 
     const last5 = history.slice(-5);
     const lastNum = history[history.length - 1];
@@ -64,42 +62,45 @@ function getExactTwoTargetNumbers(history) {
     });
 
     const isBigTrend = bigCount >= smallCount;
+    const predictedTrend = isBigTrend ? "BIG" : "SMALL";
+    let targetNumbers = [];
 
     if (isBigTrend) {
-        if (lastNum === 5 || lastNum === 0) return [7, 9];
-        if (lastNum === 6 || lastNum === 1) return [6, 8];
-        if (lastNum === 7 || lastNum === 2) return [7, 9];
-        return [5, 8];
+        if (lastNum === 5 || lastNum === 0) targetNumbers = [7, 9];
+        else if (lastNum === 6 || lastNum === 1) targetNumbers = [6, 8];
+        else if (lastNum === 7 || lastNum === 2) targetNumbers = [7, 9];
+        else targetNumbers = [5, 8];
     } else {
-        if (lastNum === 0 || lastNum === 5) return [1, 3];
-        if (lastNum === 1 || lastNum === 6) return [0, 2];
-        if (lastNum === 2 || lastNum === 7) return [1, 3];
-        return [0, 4];
+        if (lastNum === 0 || lastNum === 5) targetNumbers = [1, 3];
+        else if (lastNum === 1 || lastNum === 6) targetNumbers = [0, 2];
+        else if (lastNum === 2 || lastNum === 7) targetNumbers = [1, 3];
+        else targetNumbers = [0, 4];
     }
+
+    return { trend: predictedTrend, targets: targetNumbers };
 }
 
 // Webhook Route
 app.post('/webhook', async (req, res) => {
     try {
-        const data = req.body;
+        const data = req.body || {};
         
-        if (!data || !data.period || data.resultNumber === undefined) {
-            return res.status(400).send([0, 0]);
-        }
+        const period = data.period || data.issue || data.stage || Date.now();
+        const rawResult = data.resultNumber !== undefined ? data.resultNumber : (data.number !== undefined ? data.number : data.result);
+        const resultNum = parseInt(rawResult) || 0;
 
         totalPredictions++;
         const currentBatchNumber = totalPredictions;
-        const resultNum = parseInt(data.resultNumber);
 
         recentNumbersHistory.push(resultNum);
         if (recentNumbersHistory.length > 20) recentNumbersHistory.shift();
 
-        // Get ONLY 2 target numbers
-        const targetNumbers = getExactTwoTargetNumbers(recentNumbersHistory);
+        // Get Both Big/Small Trend and 2 Target Numbers
+        const prediction = getTrendAndTwoTargets(recentNumbersHistory);
 
         const isWin = data.isWin || false; 
         const isJackpot = data.isJackpot || false;
-        const profitAmount = data.profit || 0;
+        const profitAmount = parseFloat(data.profit) || 0;
 
         if (isWin) {
             totalWins++;
@@ -116,12 +117,15 @@ app.post('/webhook', async (req, res) => {
         }
 
         const roundStatus = isWin ? (isJackpot ? "💥 JACKPOT" : "✅ WIN") : "❌ LOSS";
+        
+        // Record details for batch report
         currentBatchHistory.push({
             batchIndex: currentBatchNumber,
-            period: data.period,
+            period: period,
             status: roundStatus,
             level: currentLevel,
-            targets: targetNumbers.join(',')
+            trend: prediction.trend,
+            targets: prediction.targets.join(',')
         });
 
         // Send Telegram Report ONLY at 60, 120, 180...
@@ -141,7 +145,7 @@ app.post('/webhook', async (req, res) => {
             reportText += `📝 **FULL BATCH HISTORY (${startRange}-${endRange}):**\n\n`;
 
             currentBatchHistory.forEach((item) => {
-                reportText += `${item.status} | Period: ${item.period} | Targets: [${item.targets}] | Lvl: ${item.level}\n`;
+                reportText += `${item.status} | Period: ${item.period} | Trend: ${item.trend} [${item.targets}] | Lvl: ${item.level}\n`;
             });
 
             reportText += `━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -151,17 +155,23 @@ app.post('/webhook', async (req, res) => {
             resetBatchStats();
         }
 
-        // Returns ONLY the 2 target numbers
-        return res.status(200).json(targetNumbers);
+        // Return Output containing Trend and 2 Target Numbers
+        return res.status(200).json({
+            trend: prediction.trend,
+            targetNumbers: prediction.targets
+        });
 
     } catch (error) {
-        console.error("Webhook Error:", error);
-        return res.status(500).json([0, 0]);
+        console.error("❌ Webhook Error:", error);
+        return res.status(500).json({
+            trend: "BIG",
+            targetNumbers: [7, 9]
+        });
     }
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
-    await sendTelegramMessage("🚀 **Bot Server Live & Connected Successfully!** Listening for predictions...");
+    await sendTelegramMessage("🚀 **Bot Server Live & Connected Successfully!**");
 });
