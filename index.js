@@ -43,7 +43,6 @@ let predictionCount = 0;
 let maxLevelReached = 1;
 let prediction60History = [];
 
-// Track Wins at Each Level (1 to 8)
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
@@ -70,42 +69,48 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Pattern Engine - Both Big/Small and Jackpot 2 Numbers Separated
+// Improved Pattern Engine (Smart Trend + Anti Zig-Zag Guard)
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let allResults = allNumbers.map(n => n >= 5 ? "B" : "S");
+        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let lastResult = allResults[0] === "B" ? "BIG" : "SMALL";
-        let secondLastResult = allResults[1] === "B" ? "BIG" : "SMALL";
-        let thirdLastResult = allResults[2] === "B" ? "BIG" : "SMALL";
+        let r1 = allResults[0]; // Recent
+        let r2 = allResults[1];
+        let r3 = allResults[2];
+        let r4 = allResults[3];
 
         let predResult = "";
 
-        // Single Cut Pattern Detection (B-S-B or S-B-S)
-        if (lastResult !== secondLastResult && secondLastResult !== thirdLastResult) {
-            predResult = lastResult === "BIG" ? "SMALL" : "BIG"; 
-        } else {
-            // Direct Trend Rule: BIG -> BIG, SMALL -> SMALL
-            predResult = lastResult;
+        // 1. Alternate/Zig-Zag Pattern Check (B-S-B-S or S-B-S-B)
+        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            predResult = r1 === "BIG" ? "SMALL" : "BIG"; // Continue Alternate
+        } 
+        // 2. Strong Trend Continuation (B-B or S-S)
+        else if (r1 === r2) {
+            predResult = r1; 
+        } 
+        // 3. Fallback Single-Cut Transition
+        else {
+            predResult = r1;
         }
 
-        // Target Numbers
+        // Dynamic Target Numbers Engine based on Last Number
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let matchedNumbers = [];
 
         if (predResult === "BIG") {
-            if (lastNum === 5 || lastNum === 0) matchedNumbers = [5, 7];
-            else if (lastNum === 6 || lastNum === 1) matchedNumbers = [6, 8];
-            else if (lastNum === 7 || lastNum === 2) matchedNumbers = [7, 9];
-            else if (lastNum === 8 || lastNum === 3) matchedNumbers = [6, 8];
-            else matchedNumbers = [5, 9];
+            if ([5, 0].includes(lastNum)) matchedNumbers = [6, 8];
+            else if ([6, 1].includes(lastNum)) matchedNumbers = [7, 9];
+            else if ([7, 2].includes(lastNum)) matchedNumbers = [5, 8];
+            else if ([8, 3].includes(lastNum)) matchedNumbers = [6, 9];
+            else matchedNumbers = [7, 8];
         } else {
-            if (lastNum === 0 || lastNum === 5) matchedNumbers = [0, 2];
-            else if (lastNum === 1 || lastNum === 6) matchedNumbers = [1, 3];
-            else if (lastNum === 2 || lastNum === 7) matchedNumbers = [0, 2];
-            else if (lastNum === 3 || lastNum === 8) matchedNumbers = [1, 3];
-            else matchedNumbers = [0, 4];
+            if ([0, 5].includes(lastNum)) matchedNumbers = [1, 3];
+            else if ([1, 6].includes(lastNum)) matchedNumbers = [0, 2];
+            else if ([2, 7].includes(lastNum)) matchedNumbers = [1, 4];
+            else if ([3, 8].includes(lastNum)) matchedNumbers = [0, 3];
+            else matchedNumbers = [1, 2];
         }
 
         let numbersStr = matchedNumbers.join(", ");
@@ -122,7 +127,7 @@ function deepHistoryPatternEngine(history) {
 
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [5, 7], numbersStr: "5, 7", colorStr: "🟢 GREEN", mainColor: "GREEN" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", mainColor: "GREEN" };
     }
 }
 
