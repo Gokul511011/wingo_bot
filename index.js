@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 10000;
 // Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPINGANT_API_KEY = '2a3f73c602be4a9c8abd9ae09cb196a9'; 
+const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -70,7 +70,7 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// User-Requested Direct Trend Following Engine + High Jackpot Logic
+// Pattern Engine - Both Big/Small and Jackpot 2 Numbers Separated
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -90,7 +90,7 @@ function deepHistoryPatternEngine(history) {
             predResult = lastResult;
         }
 
-        // Enhanced High-Jackpot Target Selection Logic
+        // Target Numbers
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let matchedNumbers = [];
 
@@ -176,7 +176,6 @@ async function fetchWinGoData() {
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
             let isResultHit = (lastPredictedResult === actualResult);
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
-            let isColorHit = actualColor.includes(lastPredictedColor);
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = getBetVal(currentLevelExecuted);
@@ -190,7 +189,6 @@ async function fetchWinGoData() {
             if (isResultHit) {
                 totalWins++;
 
-                // Track Wins per Level
                 if (levelWins[currentLevelExecuted] !== undefined) {
                     levelWins[currentLevelExecuted]++;
                 } else {
@@ -200,18 +198,10 @@ async function fetchWinGoData() {
                 let winAmount = currentBetVal * 0.98;
                 totalProfitLoss += winAmount;
 
-                if (isNumberHit && isColorHit) {
-                    totalJackpots++;
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " JACKPOT WINNERS** 🏆";
-                } 
-                else if (isNumberHit) {
+                if (isNumberHit) {
                     totalJackpots++;
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
-                } 
-                else if (isColorHit) {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") " + actualColor + " WINNER CONGRATULATIONS** 🏆";
-                } 
-                else {
+                } else {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
                 }
 
@@ -228,16 +218,15 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60 Predictions Batch Summary Report
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
                 let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
-                                 "🏆 **TOTAL WINS:** " + totalWins + "\n" +
-                                 "💥 **TOTAL JACKPOTS:** " + totalJackpots + "\n" +
-                                 "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
+                                 "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
+                                 "💥 **JACKPOT WINS:** " + totalJackpots + "\n" +
+                                 "💔 **LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -263,7 +252,6 @@ async function fetchWinGoData() {
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
-                // Reset Stats for Next Batch
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
@@ -298,7 +286,7 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
+                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
