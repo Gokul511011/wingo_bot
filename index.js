@@ -4,9 +4,9 @@ const app = express();
 
 app.use(express.json());
 
-// Configuration
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+// Direct Hardcoded Credentials
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || "-1002486828817";
 
 // Bot State & Metrics Tracking
 let totalPredictions = 0;
@@ -23,8 +23,8 @@ let recentNumbersHistory = [];
 
 // Helper function to send Telegram Message
 async function sendTelegramMessage(message) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-        console.log("❌ Telegram Credentials Missing in Render Env Variables!");
+    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === "YOUR_TELEGRAM_BOT_TOKEN") {
+        console.log("❌ Telegram Credentials Missing!");
         return;
     }
     try {
@@ -163,6 +163,5 @@ app.post('/webhook', async (req, res) => {
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
-    // Startup Test Message to Telegram
     await sendTelegramMessage("🚀 **Bot Server Live & Connected Successfully!** Listening for predictions...");
 });
