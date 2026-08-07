@@ -71,7 +71,7 @@ function invertPattern(str) {
     return str.split('').map(char => char === 'B' ? 'S' : (char === 'S' ? 'B' : char)).join('');
 }
 
-// Updated Pattern Engine: Strict 2 Target Numbers Logic
+// Optimized Deep History Pattern & High-Win Jackpot Engine
 function deepHistoryPatternEngine(history, currentLevel) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -79,37 +79,42 @@ function deepHistoryPatternEngine(history, currentLevel) {
 
         let predResult = "";
 
-        if (currentLevel >= 5) {
-            let lastItem = allResults[0];
-            predResult = lastItem === "B" ? "SMALL" : "BIG";
-        } 
-        else if (allResults[0] === allResults[1] && allResults[1] === allResults[2]) {
-            predResult = allResults[0] === "B" ? "BIG" : "SMALL";
+        // 1. Dragon Streak Detection (Same trend 4+ times)
+        let streak = 1;
+        for (let i = 0; i < allResults.length - 1; i++) {
+            if (allResults[i] === allResults[i + 1]) streak++;
+            else break;
         }
-        else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2] && allResults[2] !== allResults[3]) {
+
+        // High Level Recovery Logic
+        if (currentLevel >= 4) {
+            predResult = allResults[0] === "B" ? "SMALL" : "BIG"; // Trend Break Shift
+        } 
+        else if (streak >= 3) {
+            predResult = allResults[0] === "B" ? "BIG" : "SMALL"; // Follow the Dragon Trend
+        }
+        // 2. Alternating Pattern (B-S-B-S)
+        else if (allResults[0] !== allResults[1] && allResults[1] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 3. Double-Double Pattern (BB-SS-BB)
         else if (allResults[0] === allResults[1] && allResults[2] === allResults[3] && allResults[0] !== allResults[2]) {
             predResult = allResults[0] === "B" ? "SMALL" : "BIG";
         }
+        // 4. Weighted Historical Pattern Matching
         else {
             let scoreB = 0;
             let scoreS = 0;
-            let seq5 = allResults.slice(0, 5).join("");
-            let mirrorSeq5 = invertPattern(seq5);
+            let seq4 = allResults.slice(0, 4).join("");
 
-            for (let i = 1; i < Math.min(100, allResults.length - 6); i++) {
-                let histSeq5 = allResults.slice(i, i + 5).join("");
-                let nextItem = allResults[i - 1];
-                let weight = i < 15 ? 5 : (i < 40 ? 2 : 1);
+            for (let i = 1; i < Math.min(80, allResults.length - 5); i++) {
+                let histSeq = allResults.slice(i, i + 4).join("");
+                let nextVal = allResults[i - 1];
+                let weight = i < 15 ? 4 : (i < 35 ? 2 : 1);
 
-                if (histSeq5 === seq5) {
-                    if (nextItem === "B") scoreB += (2 * weight);
-                    if (nextItem === "S") scoreS += (2 * weight);
-                }
-                if (histSeq5 === mirrorSeq5) {
-                    if (nextItem === "S") scoreB += (2 * weight);
-                    if (nextItem === "B") scoreS += (2 * weight);
+                if (histSeq === seq4) {
+                    if (nextVal === "B") scoreB += weight;
+                    if (nextVal === "S") scoreS += weight;
                 }
             }
 
@@ -118,21 +123,22 @@ function deepHistoryPatternEngine(history, currentLevel) {
             else predResult = allResults[0] === "B" ? "BIG" : "SMALL"; 
         }
 
-        // Updated Target Number Selection Strategy
-        const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        let matchedNumbers = [];
+        // 🎯 High Probability Jackpot 2-Number Selector
+        let candidateNums = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
+        let numScores = {};
+        candidateNums.forEach(n => numScores[n] = 0);
 
-        if (predResult === "BIG") {
-            if (lastNum === 5 || lastNum === 0) matchedNumbers = [7, 9];
-            else if (lastNum === 6 || lastNum === 1) matchedNumbers = [6, 8];
-            else if (lastNum === 7 || lastNum === 2) matchedNumbers = [7, 9];
-            else matchedNumbers = [5, 8];
-        } else {
-            if (lastNum === 0 || lastNum === 5) matchedNumbers = [1, 3];
-            else if (lastNum === 1 || lastNum === 6) matchedNumbers = [0, 2];
-            else if (lastNum === 2 || lastNum === 7) matchedNumbers = [1, 3];
-            else matchedNumbers = [0, 4];
+        // Analyze last 30 rounds frequency and recency
+        for (let i = 0; i < Math.min(30, allNumbers.length); i++) {
+            let num = allNumbers[i];
+            if (candidateNums.includes(num)) {
+                let weight = (30 - i); 
+                numScores[num] = (numScores[num] || 0) + weight;
+            }
         }
+
+        let sortedNums = candidateNums.sort((a, b) => numScores[b] - numScores[a]);
+        let matchedNumbers = sortedNums.slice(0, 2);
 
         let numbersStr = matchedNumbers.join(", ");
         
@@ -247,7 +253,7 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60 predictions batch report
+            // 60 Predictions Batch Summary
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
