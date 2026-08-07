@@ -43,6 +43,9 @@ let predictionCount = 0;
 let maxLevelReached = 1;
 let prediction60History = [];
 
+// Track Wins at Each Level (1 to 8)
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
@@ -67,7 +70,7 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// User-Requested Direct Trend Following Engine
+// User-Requested Direct Trend Following Engine + High Jackpot Logic
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -81,25 +84,27 @@ function deepHistoryPatternEngine(history) {
 
         // Single Cut Pattern Detection (B-S-B or S-B-S)
         if (lastResult !== secondLastResult && secondLastResult !== thirdLastResult) {
-            predResult = lastResult === "BIG" ? "SMALL" : "BIG"; // Single Cut Swap
+            predResult = lastResult === "BIG" ? "SMALL" : "BIG"; 
         } else {
             // Direct Trend Rule: BIG -> BIG, SMALL -> SMALL
             predResult = lastResult;
         }
 
-        // Jackpot Target Numbers Strategy
+        // Enhanced High-Jackpot Target Selection Logic
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let matchedNumbers = [];
 
         if (predResult === "BIG") {
-            if (lastNum === 5 || lastNum === 0) matchedNumbers = [7, 9];
+            if (lastNum === 5 || lastNum === 0) matchedNumbers = [5, 7];
             else if (lastNum === 6 || lastNum === 1) matchedNumbers = [6, 8];
             else if (lastNum === 7 || lastNum === 2) matchedNumbers = [7, 9];
-            else matchedNumbers = [5, 8];
+            else if (lastNum === 8 || lastNum === 3) matchedNumbers = [6, 8];
+            else matchedNumbers = [5, 9];
         } else {
-            if (lastNum === 0 || lastNum === 5) matchedNumbers = [1, 3];
-            else if (lastNum === 1 || lastNum === 6) matchedNumbers = [0, 2];
-            else if (lastNum === 2 || lastNum === 7) matchedNumbers = [1, 3];
+            if (lastNum === 0 || lastNum === 5) matchedNumbers = [0, 2];
+            else if (lastNum === 1 || lastNum === 6) matchedNumbers = [1, 3];
+            else if (lastNum === 2 || lastNum === 7) matchedNumbers = [0, 2];
+            else if (lastNum === 3 || lastNum === 8) matchedNumbers = [1, 3];
             else matchedNumbers = [0, 4];
         }
 
@@ -117,7 +122,7 @@ function deepHistoryPatternEngine(history) {
 
     } catch (e) {
         console.error("Pattern Engine Error:", e.message);
-        return { predResult: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN", mainColor: "GREEN" };
+        return { predResult: "BIG", targetNumbers: [5, 7], numbersStr: "5, 7", colorStr: "🟢 GREEN", mainColor: "GREEN" };
     }
 }
 
@@ -185,6 +190,13 @@ async function fetchWinGoData() {
             if (isResultHit) {
                 totalWins++;
 
+                // Track Wins per Level
+                if (levelWins[currentLevelExecuted] !== undefined) {
+                    levelWins[currentLevelExecuted]++;
+                } else {
+                    levelWins[currentLevelExecuted] = 1;
+                }
+
                 let winAmount = currentBetVal * 0.98;
                 totalProfitLoss += winAmount;
 
@@ -216,7 +228,7 @@ async function fetchWinGoData() {
                 maintenanceLevel++; 
             }
 
-            // 60 Predictions Summary Report
+            // 60 Predictions Batch Summary Report
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
@@ -228,6 +240,16 @@ async function fetchWinGoData() {
                                  "💔 **TOTAL LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "🎯 **LEVEL-WISE WINS BREAKDOWN:**\n" +
+                                 "🔹 LEVEL 1 (₹1): " + levelWins[1] + " WINS\n" +
+                                 "🔹 LEVEL 2 (₹3): " + levelWins[2] + " WINS\n" +
+                                 "🔹 LEVEL 3 (₹7): " + levelWins[3] + " WINS\n" +
+                                 "🔹 LEVEL 4 (₹20): " + levelWins[4] + " WINS\n" +
+                                 "🔹 LEVEL 5 (₹50): " + levelWins[5] + " WINS\n" +
+                                 "🔹 LEVEL 6 (₹150): " + levelWins[6] + " WINS\n" +
+                                 "🔹 LEVEL 7 (₹450): " + levelWins[7] + " WINS\n" +
+                                 "🔹 LEVEL 8 (₹1350): " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "📝 **RECENT HISTORY SUMMARY (LAST 10):**\n";
 
@@ -241,6 +263,7 @@ async function fetchWinGoData() {
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
+                // Reset Stats for Next Batch
                 predictionCount = 0;
                 totalWins = 0;
                 totalLosses = 0;
@@ -248,6 +271,7 @@ async function fetchWinGoData() {
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
                 prediction60History = [];
+                levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
 
