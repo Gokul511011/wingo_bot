@@ -23,15 +23,19 @@ let recentNumbersHistory = [];
 
 // Helper function to send Telegram Message
 async function sendTelegramMessage(message) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        console.log("❌ Telegram Credentials Missing in Render Env Variables!");
+        return;
+    }
     try {
         await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             chat_id: TELEGRAM_CHAT_ID,
             text: message,
             parse_mode: 'Markdown'
         });
+        console.log("✅ Telegram Message Sent Successfully!");
     } catch (error) {
-        console.error("Telegram Send Error:", error.message);
+        console.error("❌ Telegram Send Error:", error.response ? error.response.data : error.message);
     }
 }
 
@@ -120,7 +124,7 @@ app.post('/webhook', async (req, res) => {
             targets: targetNumbers.join(',')
         });
 
-        // Telegram Report at 60, 120, 180...
+        // Send Telegram Report ONLY at 60, 120, 180...
         if (totalPredictions % 60 === 0) {
             const startRange = totalPredictions - 59;
             const endRange = totalPredictions;
@@ -147,7 +151,7 @@ app.post('/webhook', async (req, res) => {
             resetBatchStats();
         }
 
-        // Returns ONLY the 2 target numbers (e.g. [7, 9] or [1, 3])
+        // Returns ONLY the 2 target numbers
         return res.status(200).json(targetNumbers);
 
     } catch (error) {
@@ -156,7 +160,9 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, async () => {
     console.log(`Server is running on port ${PORT}`);
+    // Startup Test Message to Telegram
+    await sendTelegramMessage("🚀 **Bot Server Live & Connected Successfully!** Listening for predictions...");
 });
