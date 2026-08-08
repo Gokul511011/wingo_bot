@@ -130,29 +130,26 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // ScrapingAnt Browser Rendering Bypass Route
+        // Route 1: ScrapingAnt with Residential Proxy + Browser Mode
         try {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true`;
-            const response = await axios.get(scraperUrl, { timeout: 12000 });
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true&proxy_type=residential`;
+            const response = await axios.get(scraperUrl, { timeout: 15000 });
             rawContent = response.data;
         } catch (e) {
-            // Direct Fallback
+            // Route 2: Fast API Direct Gateway Fallback
             try {
-                const directRes = await axios.get(TARGET_URL, {
-                    timeout: 4000,
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
-                });
-                rawContent = directRes.data;
-            } catch (err) {}
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
+                const proxyRes = await axios.get(proxyUrl, { timeout: 5000 });
+                rawContent = proxyRes.data;
+            } catch (pErr) {}
         }
 
-        // Clean & Parse HTML/JSON Response
+        // Clean & Extract Data
         if (typeof rawContent === 'string') {
             try { 
                 rawContent = JSON.parse(rawContent); 
             } catch (e) {
-                // If wrapped in HTML body by Browser Scraper
-                let jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+                let jsonMatch = rawContent.match(/\{[\s\S]*"data"[\s\S]*\}/);
                 if (jsonMatch) {
                     try { rawContent = JSON.parse(jsonMatch[0]); } catch (err) {}
                 }
@@ -162,12 +159,12 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Bypass Retrying... Cloudflare check in progress.");
+            console.log("Cloudflare bypass active... Waiting for response.");
             isFetching = false;
             return;
         }
 
-        console.log("Successfully Bypass! Fetched items:", list.length);
+        console.log("SUCCESS! Connection established. Total records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -313,4 +310,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 5000);
+setInterval(fetchWinGoData, 6000);
