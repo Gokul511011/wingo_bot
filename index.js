@@ -55,29 +55,47 @@ function getNumberColor(num) {
     return "RED";
 }
 
-function deepHistoryPatternEngine(history) {
+// Advanced Historical Probability Engine for Big/Small
+function historicalProbabilityEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let r1 = allResults[0];
-        let r2 = allResults[1];
-        let r3 = allResults[2];
-        let r4 = allResults[3];
+        if (allResults.length < 10) {
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN" };
+        }
 
-        let predResult = "";
-        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
-        } else if (r1 === r2) {
-            predResult = r1; 
+        // Get current pattern of last 3 results
+        let p1 = allResults[0];
+        let p2 = allResults[1];
+        let p3 = allResults[2];
+
+        let bigCount = 0;
+        let smallCount = 0;
+
+        // Scan full history to find how many times BIG or SMALL followed this exact pattern (p1, p2, p3)
+        for (let i = 3; i < allResults.length - 1; i++) {
+            if (allResults[i] === p3 && allResults[i+1] === p2 && allResults[i+2] === p1) {
+                let nextOutcome = allResults[i-1]; // The result that came right after this pattern in history
+                if (nextOutcome === "BIG") bigCount++;
+                else if (nextOutcome === "SMALL") smallCount++;
+            }
+        }
+
+        let predResult = "BIG";
+        if (bigCount + smallCount >= 3) {
+            // If historical data exists for this specific pattern, choose the highest probability one
+            predResult = bigCount >= smallCount ? "BIG" : "SMALL";
         } else {
-            predResult = r1;
+            // Fallback to recent trend balance if specific pattern history is low
+            let recentSum = allResults.slice(0, 5).filter(r => r === "BIG").length;
+            predResult = recentSum >= 3 ? "SMALL" : "BIG"; // Anti-streak balance mechanism to prevent continuous loss
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let baseMatchedNumbers = [];
 
-        // Original Base Mapping
+        // Number Mapping based on predicted Big/Small result and last number
         if (predResult === "BIG") {
             if ([5, 0].includes(lastNum)) baseMatchedNumbers = [6, 8];
             else if ([6, 1].includes(lastNum)) baseMatchedNumbers = [7, 9];
@@ -92,22 +110,19 @@ function deepHistoryPatternEngine(history) {
             else baseMatchedNumbers = [1, 2];
         }
 
-        // Advanced History Filtering for Numbers (Most frequent next number matching)
+        // Filter numbers based on historical frequency matching for this last number
         let matchedNumbers = [...baseMatchedNumbers];
-        if (history.length > 10) {
-            let counts = {};
-            baseMatchedNumbers.forEach(n => counts[n] = 0);
+        let counts = {};
+        baseMatchedNumbers.forEach(n => counts[n] = 0);
 
-            for (let i = 0; i < history.length - 1; i++) {
-                let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
-                let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
-                if (currN === lastNum && baseMatchedNumbers.includes(nextN)) {
-                    counts[nextN]++;
-                }
+        for (let i = 0; i < history.length - 1; i++) {
+            let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
+            let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
+            if (currN === lastNum && baseMatchedNumbers.includes(nextN)) {
+                counts[nextN]++;
             }
-
-            matchedNumbers.sort((a, b) => counts[b] - counts[a]);
         }
+        matchedNumbers.sort((a, b) => counts[b] - counts[a]);
 
         let numbersStr = matchedNumbers.join(", ");
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
@@ -209,7 +224,7 @@ async function fetchWinGoData() {
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = deepHistoryPatternEngine(list);
+            let pred = historicalProbabilityEngine(list);
             let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
             let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
