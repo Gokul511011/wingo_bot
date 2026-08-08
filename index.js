@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
 
+// Public Proxy Gateways
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -130,41 +130,44 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Route 1: ScrapingAnt with Residential Proxy + Browser Mode
+        // Gate 1: Corsproxy Direct Tunnel
         try {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true&proxy_type=residential`;
-            const response = await axios.get(scraperUrl, { timeout: 15000 });
-            rawContent = response.data;
-        } catch (e) {
-            // Route 2: Fast API Direct Gateway Fallback
+            const res = await axios.get(`https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`, { timeout: 4000 });
+            rawContent = res.data;
+        } catch (e1) {
+            // Gate 2: Api.allorigins Proxy Bypass
             try {
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(TARGET_URL)}`;
-                const proxyRes = await axios.get(proxyUrl, { timeout: 5000 });
-                rawContent = proxyRes.data;
-            } catch (pErr) {}
+                const res2 = await axios.get(`https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`, { timeout: 4000 });
+                rawContent = res2.data?.contents;
+            } catch (e2) {
+                // Gate 3: Direct Fetch with Spoofed Browser Headers
+                try {
+                    const res3 = await axios.get(TARGET_URL, {
+                        timeout: 3000,
+                        headers: {
+                            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                            'Accept': 'application/json, text/plain, */*',
+                            'Referer': 'https://www.rajastake7.com/'
+                        }
+                    });
+                    rawContent = res3.data;
+                } catch (e3) {}
+            }
         }
 
-        // Clean & Extract Data
         if (typeof rawContent === 'string') {
-            try { 
-                rawContent = JSON.parse(rawContent); 
-            } catch (e) {
-                let jsonMatch = rawContent.match(/\{[\s\S]*"data"[\s\S]*\}/);
-                if (jsonMatch) {
-                    try { rawContent = JSON.parse(jsonMatch[0]); } catch (err) {}
-                }
-            }
+            try { rawContent = JSON.parse(rawContent); } catch (e) {}
         }
 
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Cloudflare bypass active... Waiting for response.");
+            console.log("Fetching data... IP bypass in progress.");
             isFetching = false;
             return;
         }
 
-        console.log("SUCCESS! Connection established. Total records:", list.length);
+        console.log("Data fetched successfully! Count:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -310,4 +313,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 6000);
+setInterval(fetchWinGoData, 3000);
