@@ -55,8 +55,8 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Ultra Responsive Trend Engine (Zig-Zag, Double, Triple, Mirror & Dragon Matcher)
-function dynamicTrendMatcherEngine(history) {
+// Advanced Accurate Number & Trend Matcher Engine (2000 History Deep Scan)
+function accurateNumberTrendEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
@@ -69,85 +69,88 @@ function dynamicTrendMatcherEngine(history) {
         let r2 = allResults[1];
         let r3 = allResults[2];
         let r4 = allResults[3];
-        let r5 = allResults[4];
 
         let predResult = "BIG";
-        let detectedPatternName = "Dynamic Trend Follow";
+        let detectedPatternName = "Trend Follow";
 
-        // 1. Zig-Zag (Alternative: Big, Small, Big, Small)
+        // 1. Zig-Zag Detection
         if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
             detectedPatternName = "Zig-Zag Pattern";
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
         }
-        // 2. Double Pattern (Big, Big, Small, Small)
+        // 2. Double Pattern Detection
         else if (r1 === r2 && r3 === r4 && r2 !== r3) {
             detectedPatternName = "Double Pattern";
             predResult = r1; 
         }
-        // 3. Triple / Dragon Pattern (Long Streaks)
+        // 3. Dragon / Long Streak Detection
         else if (r1 === r2 && r2 === r3) {
             if (r1 === r2 && r2 === r3 && r3 === r4) {
                 detectedPatternName = "Dragon Break (Reversal)";
-                predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Break after long dragon
+                predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             } else {
                 detectedPatternName = "Dragon / Triple Streak";
-                predResult = r1; // Continue streak
+                predResult = r1;
             }
         }
-        // 4. Mirror Pattern
-        else if (r1 === r5 && r2 === r4 && r1 !== r2) {
-            detectedPatternName = "Mirror Pattern";
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-        }
         else {
-            detectedPatternName = "Direct Follow Trend";
+            detectedPatternName = "Direct Flow";
             predResult = r1;
         }
 
-        // Deep history frequency alignment for exact numbers
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        let baseMatchedNumbers = [];
-
-        if (predResult === "BIG") {
-            if ([5, 0].includes(lastNum)) baseMatchedNumbers = [6, 8];
-            else if ([6, 1].includes(lastNum)) baseMatchedNumbers = [7, 9];
-            else if ([7, 2].includes(lastNum)) baseMatchedNumbers = [5, 8];
-            else if ([8, 3].includes(lastNum)) baseMatchedNumbers = [6, 9];
-            else baseMatchedNumbers = [7, 8];
-        } else {
-            if ([0, 5].includes(lastNum)) baseMatchedNumbers = [1, 3];
-            else if ([1, 6].includes(lastNum)) baseMatchedNumbers = [0, 2];
-            else if ([2, 7].includes(lastNum)) baseMatchedNumbers = [1, 4];
-            else if ([3, 8].includes(lastNum)) baseMatchedNumbers = [0, 3];
-            else baseMatchedNumbers = [1, 2];
-        }
-
-        let matchedNumbers = baseMatchedNumbers.slice(0, 2);
-        let counts = {};
-        matchedNumbers.forEach(n => counts[n] = 0);
-
+        
+        // Deep 2000 History Frequency Scan for Exact Numbers
+        let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 2000);
+
         for (let i = 0; i < scanLimit; i++) {
             let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
             let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
-            if (currN === lastNum && matchedNumbers.includes(nextN)) {
-                counts[nextN]++;
+            if (currN === lastNum) {
+                numFrequency[nextN]++;
             }
         }
-        matchedNumbers.sort((a, b) => counts[b] - counts[a]);
 
+        // Filter numbers matching the predicted Big/Small category
+        let candidateNumbers = [];
+        for (let n = 0; n <= 9; n++) {
+            let isBig = n >= 5;
+            if ((predResult === "BIG" && isBig) || (predResult === "SMALL" && !isBig)) {
+                candidateNumbers.push({ num: n, count: numFrequency[n] });
+            }
+        }
+
+        // Sort by historical frequency to get the top 2 most accurate numbers
+        candidateNumbers.sort((a, b) => b.count - a.count);
+
+        let matchedNumbers = [];
+        if (candidateNumbers.length >= 2) {
+            matchedNumbers = [candidateNumbers[0].num, candidateNumbers[1].num];
+        } else if (candidateNumbers.length === 1) {
+            matchedNumbers = [candidateNumbers[0].num, predResult === "BIG" ? 8 : 2];
+        } else {
+            matchedNumbers = predResult === "BIG" ? [6, 8] : [1, 3];
+        }
+
+        matchedNumbers.sort((a, b) => a - b);
         let numbersStr = matchedNumbers.join(", ");
+        
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
         if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
         else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
+        else if (matchedNumbers.includes(2) || matchedNumbers.includes(4) || matchedNumbers.includes(6) || matchedNumbers.includes(8)) {
+            if (predResult === "SMALL") colorStr = "🔴 RED";
+            else colorStr = "🟢 GREEN / 🔴 RED";
+        }
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, detectedPatternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Fallback Trend" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Fallback" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Dynamic Trend Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Accurate Number Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -217,7 +220,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **DYNAMIC TREND MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **ACCURATE NUMBER MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -242,11 +245,11 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = dynamicTrendMatcherEngine(list);
+        let pred = accurateNumberTrendEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S TREND PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S NUMBER & TREND PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                   "🧩 **PATTERN:** `" + pred.detectedPatternName + "`\n" +
@@ -294,6 +297,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Dynamic Trend Engine Bot Active on port " + PORT); 
+    console.log("Accurate Number Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
