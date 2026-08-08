@@ -130,8 +130,9 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
-        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        // browser_scraper=true சேர்க்கப்பட்டு 403 bypass செய்யப்பட்டுள்ளது
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
+        const response = await axios.get(scraperUrl, { timeout: 25000 });
         rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
@@ -141,7 +142,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Empty or Invalid Data. Retrying...");
+            console.log("Empty response or structure issue, retrying...");
             return;
         }
 
@@ -291,5 +292,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-// Concurrency Limit 1-ஐ சமாளிக்க Interval time 8000ms (8 seconds) ஆக்கப்பட்டிருக்கிறது.
-setInterval(fetchWinGoData, 8000);
+setInterval(fetchWinGoData, 10000);
