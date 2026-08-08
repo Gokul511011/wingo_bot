@@ -16,20 +16,10 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-// வேரியபிள்கள் இங்கே இருக்க வேண்டும்
 let lastSentPeriod = "";
 let lastPredictedResult = null;
-let lastPredictedNumbers = [];
-let lastPredictedColor = "";
 let lastPredictedPeriod = null;
-let totalWins = 0;
-let totalLosses = 0;
-let totalJackpots = 0;
-let maintenanceLevel = 1;
-let totalProfitLoss = 0;
-let predictionCount = 0;
-let maxLevelReached = 1;
-let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+let totalWins = 0, totalLosses = 0, totalJackpots = 0, maintenanceLevel = 1, totalProfitLoss = 0, predictionCount = 0;
 
 const levelData = {
     1: { name: "₹1", val: 1 }, 2: { name: "₹3", val: 3 }, 3: { name: "₹7", val: 7 }, 4: { name: "₹20", val: 20 },
@@ -37,39 +27,29 @@ const levelData = {
 };
 
 function getBetVal(level) { return levelData[level] ? levelData[level].val : Math.pow(3, level - 1); }
-function getNumberColor(num) {
-    if ([2, 4, 6, 8].includes(num)) return "RED";
-    if ([1, 3, 7, 9].includes(num)) return "GREEN";
-    if (num === 0) return "RED / VIOLET";
-    if (num === 5) return "GREEN / VIOLET";
-    return "RED";
-}
 
-// ... (deepHistoryPatternEngine அப்படியே இருக்கட்டும்) ...
 function deepHistoryPatternEngine(history) {
-    try {
-        let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
-        let r1 = allResults[0], r2 = allResults[1], r3 = allResults[2], r4 = allResults[3];
-        let predResult = (r1 !== r2 && r2 !== r3 && r3 !== r4) ? (r1 === "BIG" ? "SMALL" : "BIG") : r1;
-        const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        let matchedNumbers = predResult === "BIG" ? ([5, 0].includes(lastNum) ? [6, 8] : [6, 1].includes(lastNum) ? [7, 9] : [7, 2].includes(lastNum) ? [5, 8] : [8, 3].includes(lastNum) ? [6, 9] : [7, 8]) : ([0, 5].includes(lastNum) ? [1, 3] : [1, 6].includes(lastNum) ? [0, 2] : [2, 7].includes(lastNum) ? [1, 4] : [3, 8].includes(lastNum) ? [0, 3] : [1, 2]);
-        let numbersStr = matchedNumbers.join(", ");
-        let colorStr = (matchedNumbers.includes(0) ? "🔴 RED / 🟣 VIOLET" : matchedNumbers.includes(5) ? "🟢 GREEN / 🟣 VIOLET" : predResult === "BIG" ? "🟢 GREEN" : "🔴 RED");
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr };
-    } catch (e) { return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN" }; }
+    let allNumbers = history.map(x => parseInt(x.number ?? x.result ?? 0));
+    let r1 = allNumbers[0] >= 5 ? "BIG" : "SMALL";
+    let r2 = allNumbers[1] >= 5 ? "BIG" : "SMALL";
+    let predResult = (r1 === r2) ? r1 : (r1 === "BIG" ? "SMALL" : "BIG");
+    let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+    return { predResult, colorStr };
 }
 
 async function fetchWinGoData() {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
         let list = response.data?.data?.list || response.data?.list;
-        if (!list || !Array.isArray(list)) return;
+        if (!list || !Array.isArray(list) || list.length === 0) return;
 
         let lastItem = list[0];
-        let actualNum = parseInt(lastItem.number ?? lastItem.result);
+        // இங்குதான் மாற்றம் - undefined வராமல் தடுக்க செக் செய்கிறோம்
+        let actualPeriod = String(lastItem.issueName ?? lastItem.issue ?? lastItem.period ?? "");
+        if (!actualPeriod) return; 
+
+        let actualNum = parseInt(lastItem.number ?? lastItem.result ?? 0);
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
-        let actualPeriod = String(lastItem.issueName ?? lastItem.issue);
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
         let dynamicStatusMsg = "";
 
@@ -80,21 +60,18 @@ async function fetchWinGoData() {
             
             if (isResultHit) {
                 totalWins++;
-                let winAmount = (currentBetVal * 0.98).toFixed(2);
-                totalProfitLoss += parseFloat(winAmount);
-                dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel} (₹${winAmount} WIN))** 🎉\n🏆 **${actualResult} (${actualNum}) WIN**`;
+                totalProfitLoss += (currentBetVal * 0.98);
+                dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel})**\n🏆 **${actualResult} (${actualNum}) WIN**`;
                 maintenanceLevel = 1;
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
-                dynamicStatusMsg = `💔 **LOSS: ${actualResult} (${actualNum})**\n➡️ **NEXT LEVEL PARTHU KIRAM (LEVEL ${maintenanceLevel + 1})**`;
+                dynamicStatusMsg = `💔 **LOSS: ${actualResult} (${actualNum})**\n➡️ **NEXT LEVEL (LEVEL ${maintenanceLevel + 1})**`;
                 maintenanceLevel++;
             }
 
             if (predictionCount >= 60) {
-                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
-                                 "🎯 **TOTAL WINS:** " + totalWins + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                                 "💰 **TOTAL PROFIT:** ₹" + totalProfitLoss.toFixed(2) + "\n━━━━━━━━━━━━━━━━━━━━━";
+                let summaryMsg = `📊 **60 ROUNDS SUMMARY**\n🎯 **WINS:** ${totalWins} | 💔 **LOSSES:** ${totalLosses}\n💰 **PROFIT:** ₹${totalProfitLoss.toFixed(2)}`;
                 await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 predictionCount = 0; totalWins = 0; totalLosses = 0; totalProfitLoss = 0; maintenanceLevel = 1;
@@ -103,15 +80,14 @@ async function fetchWinGoData() {
 
         if (nextPeriod !== lastSentPeriod) {
             let pred = deepHistoryPatternEngine(list);
-            let msg = `🔥 **WINGO 30S PREDICTION** 🔥\n📌 **PERIOD:** \`${nextPeriod}\`\n🎲 **BET:** **${pred.predResult}**\n🎨 **COLOUR:** ${pred.colorStr}\n💰 **LEVEL:** ${maintenanceLevel} (${levelData[maintenanceLevel].name})\n━━━━━━━━━━━━━━━━━━━━━\n${dynamicStatusMsg}\n🔗 **Link:** ${REGISTER_LINK}`;
+            let msg = `🔥 **WINGO 30S** 🔥\n📌 **PERIOD:** \`${nextPeriod}\`\n🎲 **BET:** **${pred.predResult}**\n🎨 **COLOUR:** ${pred.colorStr}\n💰 **LEVEL:** ${maintenanceLevel}\n━━━━━━━━━━━━\n${dynamicStatusMsg}\n🔗 ${REGISTER_LINK}`;
             
             await bot.sendMessage(MAIN_CHANNEL, msg, { parse_mode: 'Markdown' });
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedResult = pred.predResult;
-            lastPredictedNumbers = pred.targetNumbers;
         }
-    } catch (e) { console.error(e.message); }
+    } catch (e) { console.error("Error:", e.message); }
 }
 
 async function startContinuousLoop() { while (true) { await fetchWinGoData(); await new Promise(r => setTimeout(r, 6000)); } }
