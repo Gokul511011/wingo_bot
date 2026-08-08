@@ -130,46 +130,44 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Route 1: ScrapingAnt Proxy (High Priority)
+        // ScrapingAnt Browser Rendering Bypass Route
         try {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
-            const response = await axios.get(scraperUrl, { timeout: 6000 });
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=true`;
+            const response = await axios.get(scraperUrl, { timeout: 12000 });
             rawContent = response.data;
         } catch (e) {
-            // Route 2: Direct Request with Headers
+            // Direct Fallback
             try {
                 const directRes = await axios.get(TARGET_URL, {
                     timeout: 4000,
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                        'Accept': '*/*',
-                        'Referer': 'https://www.rajastake7.com/'
-                    }
+                    headers: { 'User-Agent': 'Mozilla/5.0' }
                 });
                 rawContent = directRes.data;
-            } catch (err) {
-                // Route 3: Public Proxy Backup
-                try {
-                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
-                    const proxyRes = await axios.get(proxyUrl, { timeout: 4000 });
-                    rawContent = proxyRes.data?.contents;
-                } catch (pErr) {}
-            }
+            } catch (err) {}
         }
 
+        // Clean & Parse HTML/JSON Response
         if (typeof rawContent === 'string') {
-            try { rawContent = JSON.parse(rawContent); } catch (e) {}
+            try { 
+                rawContent = JSON.parse(rawContent); 
+            } catch (e) {
+                // If wrapped in HTML body by Browser Scraper
+                let jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    try { rawContent = JSON.parse(jsonMatch[0]); } catch (err) {}
+                }
+            }
         }
 
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Fetching retrying... Data empty or blocked.");
+            console.log("Bypass Retrying... Cloudflare check in progress.");
             isFetching = false;
             return;
         }
 
-        console.log("Successfully fetched " + list.length + " items!");
+        console.log("Successfully Bypass! Fetched items:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -315,4 +313,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 3000);
+setInterval(fetchWinGoData, 5000);
