@@ -75,20 +75,40 @@ function deepHistoryPatternEngine(history) {
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        let matchedNumbers = [];
+        let baseMatchedNumbers = [];
 
+        // Original Base Mapping
         if (predResult === "BIG") {
-            if ([5, 0].includes(lastNum)) matchedNumbers = [6, 8];
-            else if ([6, 1].includes(lastNum)) matchedNumbers = [7, 9];
-            else if ([7, 2].includes(lastNum)) matchedNumbers = [5, 8];
-            else if ([8, 3].includes(lastNum)) matchedNumbers = [6, 9];
-            else matchedNumbers = [7, 8];
+            if ([5, 0].includes(lastNum)) baseMatchedNumbers = [6, 8];
+            else if ([6, 1].includes(lastNum)) baseMatchedNumbers = [7, 9];
+            else if ([7, 2].includes(lastNum)) baseMatchedNumbers = [5, 8];
+            else if ([8, 3].includes(lastNum)) baseMatchedNumbers = [6, 9];
+            else baseMatchedNumbers = [7, 8];
         } else {
-            if ([0, 5].includes(lastNum)) matchedNumbers = [1, 3];
-            else if ([1, 6].includes(lastNum)) matchedNumbers = [0, 2];
-            else if ([2, 7].includes(lastNum)) matchedNumbers = [1, 4];
-            else if ([3, 8].includes(lastNum)) matchedNumbers = [0, 3];
-            else matchedNumbers = [1, 2];
+            if ([0, 5].includes(lastNum)) baseMatchedNumbers = [1, 3];
+            else if ([1, 6].includes(lastNum)) baseMatchedNumbers = [0, 2];
+            else if ([2, 7].includes(lastNum)) baseMatchedNumbers = [1, 4];
+            else if ([3, 8].includes(lastNum)) baseMatchedNumbers = [0, 3];
+            else baseMatchedNumbers = [1, 2];
+        }
+
+        // Advanced History Filtering for Numbers (Most frequent next number matching)
+        let matchedNumbers = [...baseMatchedNumbers];
+        if (history.length > 10) {
+            let counts = {};
+            baseMatchedNumbers.forEach(n => counts[n] = 0);
+
+            // Check past occurrences in history to find which base number appeared more frequently next
+            for (let i = 0; i < history.length - 1; i++) {
+                let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
+                let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
+                if (currN === lastNum && baseMatchedNumbers.includes(nextN)) {
+                    counts[nextN]++;
+                }
+            }
+
+            // Sort matched numbers based on historical frequency
+            matchedNumbers.sort((a, b) => counts[b] - counts[a]);
         }
 
         let numbersStr = matchedNumbers.join(", ");
