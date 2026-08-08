@@ -17,6 +17,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
 let lastSentPeriod = "";
+let lastPredictedResult = null;
 let lastPredictedNumbers = [];
 let lastPredictedPeriod = null;
 
@@ -29,6 +30,7 @@ let predictionCount = 0;
 let maxLevelReached = 1;
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+let levelJackpots = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
     1: { name: "₹1", val: 1 },
@@ -54,17 +56,41 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Pure 500 History Transition Number Prediction Engine
-function pureNumberPredictionEngine(history) {
+// RNG History-Based Trend & Number Engine (Original Logic Intact)
+function rngHistoryEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
-        if (allNumbers.length < 10) {
-            return { targetNumbers: [3, 7], numbersStr: "3, 7", colorStr: "🟢 GREEN", transitionInfo: "Standard Start" };
+        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
+
+        if (allResults.length < 10) {
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", trendInfo: "RNG Initial Scan" };
+        }
+
+        let r1 = allResults[0];
+        let r2 = allResults[1];
+        let r3 = allResults[2];
+
+        let predResult = "BIG";
+        let trendInfo = "RNG Trend Follow";
+
+        let streak = 1;
+        for (let i = 1; i < allResults.length; i++) {
+            if (allResults[i] === r1) streak++;
+            else break;
+        }
+
+        if (streak >= 3) {
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+            trendInfo = `RNG Streak Break (${streak}x) -> Switch`;
+        } else if (r1 !== r2 && r2 !== r3) {
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+            trendInfo = "RNG Zig-Zag Switch";
+        } else {
+            predResult = r1;
+            trendInfo = "RNG Direct Flow";
         }
 
         const lastNum = allNumbers[0];
-        
-        // Scan up to 500 history to see which number followed lastNum most frequently
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 500);
 
@@ -76,31 +102,47 @@ function pureNumberPredictionEngine(history) {
             }
         }
 
-        let sortedCandidates = [];
+        let candidates = [];
         for (let n = 0; n <= 9; n++) {
-            sortedCandidates.push({ num: n, count: numFrequency[n] });
+            let isBig = n >= 5;
+            if ((predResult === "BIG" && isBig) || (predResult === "SMALL" && !isBig)) {
+                candidates.push({ num: n, count: numFrequency[n] });
+            }
         }
 
-        // Sort by highest transition count
-        sortedCandidates.sort((a, b) => b.count - a.count);
+        candidates.sort((a, b) => b.count - a.count);
 
-        // Pick top 2 exact numbers
-        let matchedNumbers = [sortedCandidates[0].num, sortedCandidates[1].num];
+        let matchedNumbers = [];
+        if (candidates.length >= 2) {
+            matchedNumbers = [candidates[0].num, candidates[1].num];
+        } else {
+            matchedNumbers = predResult === "BIG" ? [6, 8] : [1, 3];
+        }
+
         matchedNumbers.sort((a, b) => a - b);
         let numbersStr = matchedNumbers.join(", ");
         
-        // Determine color based on primary predicted number
-        let primaryNum = matchedNumbers[0];
-        let colorStr = getNumberColor(primaryNum);
-        let transitionInfo = `After [${lastNum}] -> [${matchedNumbers.join(', ')}] Lead`;
+        let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+        if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
+        else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
+        else if (matchedNumbers.some(n => [2, 4, 6, 8].includes(n))) {
+            colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
+        }
 
-        return { targetNumbers: matchedNumbers, numbersStr, colorStr, transitionInfo };
+        // Hidden tracking check for specific patterns like After [7] -> [0, 6] or After [6] -> [0, 1]
+        if (lastNum === 7 && matchedNumbers.includes(0) && matchedNumbers.includes(6)) {
+            trendInfo = "After [7] -> [0, 6] Lead";
+        } else if (lastNum === 6 && matchedNumbers.includes(0) && matchedNumbers.includes(1)) {
+            trendInfo = "After [6] -> [0, 1] Lead";
+        }
+
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, trendInfo };
     } catch (e) {
-        return { targetNumbers: [2, 8], numbersStr: "2, 8", colorStr: "🔴 RED", transitionInfo: "Fallback Lead" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", trendInfo: "RNG Fallback" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Pure Number Prediction Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S RNG History Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -116,6 +158,7 @@ async function fetchWinGoData() {
         if (!actualPeriod) return; 
 
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : (lastItem.result !== undefined ? lastItem.result : 0));
+        let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
         let actualColor = getNumberColor(actualNum);
         
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
@@ -132,49 +175,57 @@ async function fetchWinGoData() {
         let dynamicStatusMsg = "";
 
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
+            let isResultHit = (lastPredictedResult === actualResult);
             let isNumberHit = lastPredictedNumbers.includes(actualNum);
             let currentBetVal = getBetVal(maintenanceLevel);
 
             if (maintenanceLevel > maxLevelReached) maxLevelReached = maintenanceLevel;
             predictionCount++;
 
-            if (isNumberHit) {
+            if (isResultHit) {
                 totalWins++;
-                totalJackpots++;
                 if (levelWins[maintenanceLevel] !== undefined) levelWins[maintenanceLevel]++;
                 else levelWins[maintenanceLevel] = 1;
 
-                // Number bet payout calculation (Multiplier standard logic)
-                let winAmount = (currentBetVal * 8.5).toFixed(2);
+                let winAmount = (currentBetVal * 0.98).toFixed(2);
                 totalProfitLoss += parseFloat(winAmount);
 
-                dynamicStatusMsg = `🎉 **JACKPOT NUMBER HIT! (LEVEL ${maintenanceLevel})** 🎉\n🏆 **ACTUAL NUMBER: ${actualNum} (${actualColor})** | **WIN: +₹${winAmount}**`;
+                if (isNumberHit) {
+                    totalJackpots++;
+                    if (levelJackpots[maintenanceLevel] !== undefined) levelJackpots[maintenanceLevel]++;
+                    else levelJackpots[maintenanceLevel] = 1;
+
+                    dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel} (₹${winAmount} WIN + JK))** 🎉\n🏆 **${actualResult} (${actualNum}) JACKPOT HIT!**`;
+                } else {
+                    dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel} (₹${winAmount} WIN))** 🎉\n🏆 **${actualResult} (${actualNum}) WIN**`;
+                }
                 maintenanceLevel = 1; 
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
                 
                 if (maintenanceLevel >= 8) {
-                    dynamicStatusMsg = `💔 **LOSS AT LEVEL 8: ACTUAL (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
+                    dynamicStatusMsg = `💔 **LOSS AT LEVEL 8: ${actualResult} (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
                     maintenanceLevel = 1;
                 } else {
                     maintenanceLevel++;
-                    dynamicStatusMsg = `💔 **LOSS: ACTUAL (${actualNum} - ${actualColor})**\n➡️ **NEXT LEVEL (LEVEL ${maintenanceLevel})**`;
+                    dynamicStatusMsg = `💔 **LOSS: ${actualResult} (${actualNum} - ${actualColor})**\n➡️ **NEXT LEVEL (LEVEL ${maintenanceLevel})**`;
                 }
             }
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **PURE NUMBER PREDICTION MASTER** 👑\n\n" +
-                                 "📊 **60 ROUNDS NUMBER SUMMARY** 📊\n" +
+                let summaryMsg = "👑 **RNG HISTORY MASTER** 👑\n\n" +
+                                 "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🎯 **TOTAL ROUNDS:** 60\n" +
-                                 "🏆 **NUMBER WINS (JACKPOTS):** " + totalJackpots + "\n" +
+                                 "🎯 **TOTAL PREDICTIONS:** 60\n" +
+                                 "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
+                                 "💥 **JK WINS (JACKPOTS):** " + totalJackpots + "\n" +
                                  "💔 **LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🔄 **Resetting stats for the next batch!**";
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
@@ -186,18 +237,19 @@ async function fetchWinGoData() {
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
                 levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+                levelJackpots = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
 
-        let pred = pureNumberPredictionEngine(list);
+        let pred = rngHistoryEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🎯 **WINGO 30S NUMBER PREDICTION** 🎯\n" +
+        let msg = "🔥 **WINGO 30S RNG PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                  "📊 **LOGIC:** `" + pred.transitionInfo + "`\n" +
-                  "🔢 **TARGET NUMBERS:** `" + pred.numbersStr + "`\n" +
+                  "🎲 **BET:** **" + pred.predResult + "**\n" +
+                  "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                   "🎨 **COLOUR:** " + pred.colorStr + "\n" +
                   "💰 **BET LEVEL AMT:** **LEVEL " + maintenanceLevel + " (" + currentBetName + ")** [MAX: L8]\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n";
@@ -207,18 +259,18 @@ async function fetchWinGoData() {
         }
 
         msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-               "🏆 **WINS:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
+               "🏆 **WINS:** " + totalWins + " | 💥 **JK WINS:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
                "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                "━━━━━━━━━━━━━━━━━━━━━\n" +
-               "🎯 **LEVEL WINS (L1 - L8):**\n" +
-               "🔹 **LEVEL 1:** " + levelWins[1] + " WINS\n" +
-               "🔹 **LEVEL 2:** " + levelWins[2] + " WINS\n" +
-               "🔹 **LEVEL 3:** " + levelWins[3] + " WINS\n" +
-               "🔹 **LEVEL 4:** " + levelWins[4] + " WINS\n" +
-               "🔹 **LEVEL 5:** " + levelWins[5] + " WINS\n" +
-               "🔹 **LEVEL 6:** " + levelWins[6] + " WINS\n" +
-               "🔹 **LEVEL 7:** " + levelWins[7] + " WINS\n" +
-               "🔹 **LEVEL 8:** " + levelWins[8] + " WINS\n" +
+               "🎯 **LIVE LEVEL WINS & JK (L1 - L8):**\n" +
+               "🔹 **LEVEL 1:** " + levelWins[1] + " WINS (💥 " + levelJackpots[1] + " JK)\n" +
+               "🔹 **LEVEL 2:** " + levelWins[2] + " WINS (💥 " + levelJackpots[2] + " JK)\n" +
+               "🔹 **LEVEL 3:** " + levelWins[3] + " WINS (💥 " + levelJackpots[3] + " JK)\n" +
+               "🔹 **LEVEL 4:** " + levelWins[4] + " WINS (💥 " + levelJackpots[4] + " JK)\n" +
+               "🔹 **LEVEL 5:** " + levelWins[5] + " WINS (💥 " + levelJackpots[5] + " JK)\n" +
+               "🔹 **LEVEL 6:** " + levelWins[6] + " WINS (💥 " + levelJackpots[6] + " JK)\n" +
+               "🔹 **LEVEL 7:** " + levelWins[7] + " WINS (💥 " + levelJackpots[7] + " JK)\n" +
+               "🔹 **LEVEL 8:** " + levelWins[8] + " WINS (💥 " + levelJackpots[8] + " JK)\n" +
                "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                "🔗 **Register Link:**\n" + REGISTER_LINK;
 
@@ -226,6 +278,7 @@ async function fetchWinGoData() {
 
         lastSentPeriod = nextPeriod;
         lastPredictedPeriod = nextPeriod;
+        lastPredictedResult = pred.predResult;
         lastPredictedNumbers = pred.targetNumbers;
 
     } catch (e) { console.error("Error:", e.message); }
@@ -239,6 +292,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Pure Number Prediction Engine Active on port " + PORT); 
+    console.log("RNG History Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
