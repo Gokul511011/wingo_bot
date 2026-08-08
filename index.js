@@ -147,8 +147,16 @@ async function fetchWinGoData() {
         await initBrowser();
         await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
 
-        const content = await page.evaluate(() => document.body.innerText);
-        let parsedData = JSON.parse(content);
+        const rawText = await page.evaluate(() => document.body.innerText || document.body.textContent);
+        
+        // JSON Object-ஐ மட்டும் சரியாக பிரித்தெடுக்க
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.log("Valid JSON pattern not found in page content, retrying...");
+            return;
+        }
+
+        let parsedData = JSON.parse(jsonMatch[0]);
 
         if (!parsedData) {
             console.log("Empty Response, retrying...");
