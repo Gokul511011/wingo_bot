@@ -128,12 +128,11 @@ let page = null;
 async function initBrowser() {
     if (!browser) {
         browser = await puppeteer.launch({
-            headless: "new",
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
                 '--disable-gpu'
             ]
         });
@@ -149,7 +148,6 @@ async function fetchWinGoData() {
 
         const rawText = await page.evaluate(() => document.body.innerText || document.body.textContent);
         
-        // JSON Object-ஐ மட்டும் சரியாக பிரித்தெடுக்க
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
             console.log("Valid JSON pattern not found in page content, retrying...");
