@@ -1,9 +1,149 @@
+const https = require('https');
+const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
+const CHANNEL_ID = '-1002486828817';
+
+const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+
+app.get('/', (req, res) => res.send('WinGo 30S Fast API Engine Active!'));
+
+app.listen(PORT, '0.0.0.0', async () => {
+    console.log("Server running on port " + PORT);
+    try {
+        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
+    } catch (e) {
+        console.error("Startup Error:", e.message);
+    }
+    startContinuousLoop();
+});
+
+let lastSentPeriod = "";
+let lastPredictedResult = null;
+let lastPredictedNumbers = [];
+let lastPredictedColor = "";
+let lastPredictedPeriod = null;
+
+let totalWins = 0;
+let totalLosses = 0;
+let totalJackpots = 0;
+let maintenanceLevel = 1;
+let totalProfitLoss = 0;
+
+let predictionCount = 0;
+let maxLevelReached = 1;
+
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+
+const levelData = {
+    1: { name: "₹1", val: 1 },
+    2: { name: "₹3", val: 3 },
+    3: { name: "₹7", val: 7 },
+    4: { name: "₹20", val: 20 },
+    5: { name: "₹50", val: 50 },
+    6: { name: "₹150", val: 150 },
+    7: { name: "₹450", val: 450 },
+    8: { name: "₹1350", val: 1350 }
+};
+
+function getBetVal(level) {
+    if (levelData[level]) return levelData[level].val;
+    return Math.pow(3, level - 1);
+}
+
+function getNumberColor(num) {
+    if ([2, 4, 6, 8].includes(num)) return "RED";
+    if ([1, 3, 7, 9].includes(num)) return "GREEN";
+    if (num === 0) return "RED / VIOLET";
+    if (num === 5) return "GREEN / VIOLET";
+    return "RED";
+}
+
+function deepHistoryPatternEngine(history) {
+    try {
+        let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
+        let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
+
+        let r1 = allResults[0];
+        let r2 = allResults[1];
+        let r3 = allResults[2];
+        let r4 = allResults[3];
+
+        let predResult = "";
+
+        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
+        } else if (r1 === r2) {
+            predResult = r1; 
+        } else {
+            predResult = r1;
+        }
+
+        const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
+        let matchedNumbers = [];
+
+        if (predResult === "BIG") {
+            if ([5, 0].includes(lastNum)) matchedNumbers = [6, 8];
+            else if ([6, 1].includes(lastNum)) matchedNumbers = [7, 9];
+            else if ([7, 2].includes(lastNum)) matchedNumbers = [5, 8];
+            else if ([8, 3].includes(lastNum)) matchedNumbers = [6, 9];
+            else matchedNumbers = [7, 8];
+        } else {
+            if ([0, 5].includes(lastNum)) matchedNumbers = [1, 3];
+            else if ([1, 6].includes(lastNum)) matchedNumbers = [0, 2];
+            else if ([2, 7].includes(lastNum)) matchedNumbers = [1, 4];
+            else if ([3, 8].includes(lastNum)) matchedNumbers = [0, 3];
+            else matchedNumbers = [1, 2];
+        }
+
+        let numbersStr = matchedNumbers.join(", ");
+        let mainColor = predResult === "BIG" ? "GREEN" : "RED";
+        let colorStr = mainColor === "GREEN" ? "🟢 GREEN" : "🔴 RED";
+        if (matchedNumbers.includes(0)) {
+            colorStr = "🔴 RED / 🟣 VIOLET";
+        } else if (matchedNumbers.includes(5)) {
+            colorStr = "🟢 GREEN / 🟣 VIOLET";
+        }
+
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, mainColor };
+
+    } catch (e) {
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", mainColor: "GREEN" };
+    }
+}
+
+function httpFetch(url) {
+    return new Promise((resolve, reject) => {
+        const options = {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*'
+            }
+        };
+        https.get(url, options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on('error', reject);
+    });
+}
+
 async function fetchWinGoData() {
     try {
         let parsedData = await httpFetch(TARGET_URL);
-
-        // API Response-ஐ Logs-ல் சரிபார்க்க
-        console.log("RAW API RESPONSE:", JSON.stringify(parsedData).slice(0, 300));
 
         if (!parsedData) {
             console.log("Empty Response, retrying...");
@@ -16,8 +156,6 @@ async function fetchWinGoData() {
             console.log("Data list is empty, retrying...");
             return;
         }
-
-        console.log("SUCCESS! Data Fetched via API. Total Records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : (lastItem.result !== undefined ? lastItem.result : lastItem.numberValue));
@@ -157,3 +295,13 @@ async function fetchWinGoData() {
         console.error('[API FETCH ERROR]:', error.message);
     }
 }
+
+async function startContinuousLoop() {
+    while (true) {
+        await fetchWinGoData();
+        await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+}
+
+process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
+process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
