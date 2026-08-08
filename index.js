@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-// Updated API Key
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -25,6 +24,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
+    // Start continuous execution cycle
+    runLoop();
 });
 
 let lastSentPeriod = "";
@@ -123,18 +124,14 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-let isFetching = false;
-
 async function fetchWinGoData() {
-    if (isFetching) return;
-    isFetching = true;
-
     try {
         let rawContent = null;
 
-        // ScrapingAnt Browser Scraper Request
         const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
-        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        
+        // Timeout increased to 25s for ScrapingAnt headless browser
+        const response = await axios.get(scraperUrl, { timeout: 25000 });
         rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
@@ -286,12 +283,17 @@ async function fetchWinGoData() {
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
-    } finally {
-        isFetching = false;
+    }
+}
+
+// Sequential execution loop to completely avoid 409 Concurrency limits
+async function runLoop() {
+    while (true) {
+        await fetchWinGoData();
+        // Wait 3 seconds after each request finishes before calling again
+        await new Promise(resolve => setTimeout(resolve, 3000));
     }
 }
 
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
-
-setInterval(fetchWinGoData, 5000);
