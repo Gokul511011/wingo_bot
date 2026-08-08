@@ -9,7 +9,6 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
 
-// 500 History check kkupageSize 500 nu fix panliyachu
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
@@ -29,7 +28,7 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
-let consecutiveLosses = 0; // Track consecutive losses to detect pattern break
+let consecutiveLosses = 0;
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
@@ -57,41 +56,69 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Normal Trend & 500 History Smart Number Engine with Break Detection
-function normalTrendAndNumberEngine(history, consecutiveLossesCount) {
+// Master Multi-Pattern & Breakout Engine (Zig-Zag, Dragon, Double/Triple, Mirror, 1-2-1)
+function masterPatternAndNumberEngine(history, lossCount) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        if (allResults.length < 10) {
-            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", statusText: "Normal Trend" };
+        if (allResults.length < 15) {
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Standard Opening" };
         }
 
         let r1 = allResults[0];
         let r2 = allResults[1];
         let r3 = allResults[2];
+        let r4 = allResults[3];
+        let r5 = allResults[4];
 
         let predResult = "BIG";
-        let statusText = "Normal Follow Trend";
+        let patternName = "Trend Flow";
 
-        // If 2 consecutive losses occur, pattern is broken -> Reverse/Adapt strategy
-        if (consecutiveLossesCount >= 2) {
-            statusText = "Pattern Broken (Reversed)";
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-        } else {
-            // Standard Normal Trend (Big if last is big, small if last is small, with basic alternation check)
-            if (r1 === r2 && r2 === r3) {
-                predResult = r1; // Continue streak normally
-                statusText = "Streak Trend";
-            } else {
-                predResult = r1; // Normal direct follow
-                statusText = "Direct Trend";
-            }
+        // Count current streak of r1
+        let streakCount = 1;
+        for (let i = 1; i < allResults.length; i++) {
+            if (allResults[i] === r1) streakCount++;
+            else break;
         }
 
+        // If loss happens or streak goes 3+ times, apply breakout / opposite rule
+        if (lossCount > 0 || streakCount >= 3) {
+            if (streakCount >= 3) {
+                patternName = `Dragon / Streak Break (${streakCount}x) -> Opposite Shift`;
+            } else {
+                patternName = `Loss Recovery Break -> Opposite Shift`;
+            }
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+        } 
+        // 1. Zig-Zag Pattern (Big, Small, Big, Small)
+        else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            patternName = "Zig-Zag Pattern";
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+        }
+        // 2. Double / Triple Pattern (e.g., Big, Big, Small, Small)
+        else if (r1 === r2 && r3 === r4 && r2 !== r3) {
+            patternName = "Double/Triple Pattern";
+            predResult = r1;
+        }
+        // 3. Mirror Pattern (e.g., A, B, B, A)
+        else if (r1 === r4 && r2 === r3 && r1 !== r2) {
+            patternName = "Mirror Pattern";
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+        }
+        // 4. 1-2-1 Pattern Structure
+        else if (r1 !== r2 && r2 === r3 && r3 !== r4) {
+            patternName = "1-2-1 Pattern";
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+        }
+        // Default Trend Follow
+        else {
+            patternName = "Standard Trend Follow";
+            predResult = r1;
+        }
+
+        // 500 History Deep Scan for Exact Number Transition
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
-        
-        // Scan up to 500 history for precise number transition frequency
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 500);
 
@@ -111,7 +138,6 @@ function normalTrendAndNumberEngine(history, consecutiveLossesCount) {
             }
         }
 
-        // Sort by frequency to get top 2 precise numbers based on 500 history
         candidateNumbers.sort((a, b) => b.count - a.count);
 
         let matchedNumbers = [];
@@ -131,13 +157,13 @@ function normalTrendAndNumberEngine(history, consecutiveLossesCount) {
             colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, statusText };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", statusText: "Fallback" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Fallback Flow" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Normal Trend & 500 History Number Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Master Pattern & Number Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -179,7 +205,7 @@ async function fetchWinGoData() {
 
             if (isResultHit) {
                 totalWins++;
-                consecutiveLosses = 0; // Reset loss count on win
+                consecutiveLosses = 0; // Reset consecutive loss on win
                 if (levelWins[maintenanceLevel] !== undefined) levelWins[maintenanceLevel]++;
                 else levelWins[maintenanceLevel] = 1;
 
@@ -195,7 +221,7 @@ async function fetchWinGoData() {
                 maintenanceLevel = 1; 
             } else {
                 totalLosses++;
-                consecutiveLosses++; // Increment consecutive loss
+                consecutiveLosses++; // Track loss for breakout adaptation
                 totalProfitLoss -= currentBetVal;
                 
                 if (maintenanceLevel >= 8) {
@@ -210,7 +236,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **NORMAL TREND & NUMBER MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **MASTER PATTERN & NUMBER BOT** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -236,14 +262,14 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = normalTrendAndNumberEngine(list, consecutiveLosses);
+        let pred = masterPatternAndNumberEngine(list, consecutiveLosses);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S NORMAL PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S MASTER PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                  "🧩 **STATUS:** `" + pred.statusText + "`\n" +
+                  "🧩 **PATTERN:** `" + pred.patternName + "`\n" +
                   "🎲 **BET:** **" + pred.predResult + "**\n" +
                   "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                   "🎨 **COLOUR:** " + pred.colorStr + "\n" +
@@ -288,6 +314,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Normal Trend & Number Engine Bot Active on port " + PORT); 
+    console.log("Master Pattern & Number Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
