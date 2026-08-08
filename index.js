@@ -130,7 +130,14 @@ async function fetchWinGoData() {
         const response = await axios.get(scraperUrl, { timeout: 30000 });
         let rawContent = response?.data;
 
-        // ScrapingAnt wraps text content inside html or content field
+        console.log("--- RAW SCRAPINGANT RESPONSE TYPE ---:", typeof rawContent);
+        if (typeof rawContent === 'object') {
+            console.log("--- RAW RESPONSE KEYS ---:", Object.keys(rawContent));
+            console.log("--- RAW CONTENT PREVIEW ---:", JSON.stringify(rawContent).substring(0, 300));
+        } else {
+            console.log("--- RAW STRING PREVIEW ---:", String(rawContent).substring(0, 300));
+        }
+
         let jsonStr = "";
         if (typeof rawContent === 'object') {
             if (rawContent.content) jsonStr = rawContent.content;
@@ -139,14 +146,12 @@ async function fetchWinGoData() {
             jsonStr = rawContent;
         }
 
-        // Clean up potential HTML tags wrapping JSON string
         jsonStr = jsonStr.replace(/<[^>]*>/g, '').trim();
 
         let parsedData = null;
         try {
             parsedData = JSON.parse(jsonStr);
         } catch (e) {
-            // Try matching JSON pattern
             const match = jsonStr.match(/\{[\s\S]*\}/);
             if (match) {
                 try { parsedData = JSON.parse(match[0]); } catch (err) {}
