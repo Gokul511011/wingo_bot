@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-// Your New ScrapingAnt API Key
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -126,19 +125,35 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        let rawContent = null;
-
-        // Using standard API key endpoint URL parameter
         const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=false`;
         
         const response = await axios.get(scraperUrl, { timeout: 30000 });
-        rawContent = response?.data;
+        let rawContent = response?.data;
 
-        if (typeof rawContent === 'string') {
-            try { rawContent = JSON.parse(rawContent); } catch (e) {}
+        // ScrapingAnt wraps text content inside html or content field
+        let jsonStr = "";
+        if (typeof rawContent === 'object') {
+            if (rawContent.content) jsonStr = rawContent.content;
+            else jsonStr = JSON.stringify(rawContent);
+        } else {
+            jsonStr = rawContent;
         }
 
-        let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
+        // Clean up potential HTML tags wrapping JSON string
+        jsonStr = jsonStr.replace(/<[^>]*>/g, '').trim();
+
+        let parsedData = null;
+        try {
+            parsedData = JSON.parse(jsonStr);
+        } catch (e) {
+            // Try matching JSON pattern
+            const match = jsonStr.match(/\{[\s\S]*\}/);
+            if (match) {
+                try { parsedData = JSON.parse(match[0]); } catch (err) {}
+            }
+        }
+
+        let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
             console.log("Empty response or structure issue, retrying...");
@@ -287,12 +302,10 @@ async function fetchWinGoData() {
 }
 
 async function runLoop() {
-    // Initial 10 seconds delay on server start to clear any old requests
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
     while (true) {
         await fetchWinGoData();
-        // Safe 10 seconds interval between requests
-        await new Promise(resolve => setTimeout(resolve, 10000));
+        await new Promise(resolve => setTimeout(resolve, 8000));
     }
 }
 
