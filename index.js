@@ -221,7 +221,7 @@ async function fetchWinGoData() {
             }
 
             if (predictionCount >= 60) {
-                let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+                let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
                 
                 let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -230,17 +230,17 @@ async function fetchWinGoData() {
                                  "💥 **JACKPOT WINS:** " + totalJackpots + "\n" +
                                  "💔 **LOSSES:** " + totalLosses + "\n" +
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
-                                 "💰 **NET PROFIT / LOSS:** **" + profitSign + "**\n" +
+                                 "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **LEVEL-WISE WINS BREAKDOWN:**\n" +
-                                 "🔹 LEVEL 1 (₹1): " + levelWins[1] + " WINS\n" +
-                                 "🔹 LEVEL 2 (₹3): " + levelWins[2] + " WINS\n" +
-                                 "🔹 LEVEL 3 (₹7): " + levelWins[3] + " WINS\n" +
-                                 "🔹 LEVEL 4 (₹20): " + levelWins[4] + " WINS\n" +
-                                 "🔹 LEVEL 5 (₹50): " + levelWins[5] + " WINS\n" +
-                                 "🔹 LEVEL 6 (₹150): " + levelWins[6] + " WINS\n" +
-                                 "🔹 LEVEL 7 (₹450): " + levelWins[7] + " WINS\n" +
-                                 "🔹 LEVEL 8 (₹1350): " + levelWins[8] + " WINS\n" +
+                                 "🔹 LEVEL 1: " + levelWins[1] + " WINS\n" +
+                                 "🔹 LEVEL 2: " + levelWins[2] + " WINS\n" +
+                                 "🔹 LEVEL 3: " + levelWins[3] + " WINS\n" +
+                                 "🔹 LEVEL 4: " + levelWins[4] + " WINS\n" +
+                                 "🔹 LEVEL 5: " + levelWins[5] + " WINS\n" +
+                                 "🔹 LEVEL 6: " + levelWins[6] + " WINS\n" +
+                                 "🔹 LEVEL 7: " + levelWins[7] + " WINS\n" +
+                                 "🔹 LEVEL 8: " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
@@ -262,16 +262,15 @@ async function fetchWinGoData() {
             let activeLevel = maintenanceLevel;
             let currentBetName = levelData[activeLevel]?.name || ("₹" + getBetVal(activeLevel));
 
-            let profitSign = totalProfitLoss >= 0 ? "+₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+            let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "👑 **KING PREDICTION**\n" +
-                      "⚡ **WinGo 30S (Non-Stop Predictions)** ⚡\n" +
+            let msg = "🔥 **WINGO 30S PREDICTION** 🔥\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n" +
                       "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                      "🎯 **TARGET:** **" + pred.predResult + "**\n" +
-                      "🔢 **NUMBERS:** `" + pred.numbersStr + "`\n" +
+                      "🎲 **BET:** **" + pred.predResult + "**\n" +
+                      "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                       "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                      "💰 **BET AMOUNT:** **" + currentBetName + " (Level " + activeLevel + ")**\n" +
+                      "💰 **BET LEVEL AMT:** **LEVEL " + activeLevel + " (" + currentBetName + ")**\n" +
                       "━━━━━━━━━━━━━━━━━━━━━\n";
 
             if (dynamicStatusMsg !== "") {
@@ -279,13 +278,18 @@ async function fetchWinGoData() {
             }
 
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
-                   "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
+                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JK:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
+                   "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n" +
-                   "🎯 **LIVE LEVEL-WISE WINS:**\n" +
-                   "🔹 L1: " + levelWins[1] + " | 🔹 L2: " + levelWins[2] + " | 🔹 L3: " + levelWins[3] + "\n" +
-                   "🔹 L4: " + levelWins[4] + " | 🔹 L5: " + levelWins[5] + " | 🔹 L6: " + levelWins[6] + "\n" +
-                   "🔹 L7: " + levelWins[7] + " | 🔹 L8: " + levelWins[8] + "\n" +
+                   "🎯 **LIVE LEVEL WINS:**\n" +
+                   "🔹 **LEVEL 1:** " + levelWins[1] + " WINS\n" +
+                   "🔹 **LEVEL 2:** " + levelWins[2] + " WINS\n" +
+                   "🔹 **LEVEL 3:** " + levelWins[3] + " WINS\n" +
+                   "🔹 **LEVEL 4:** " + levelWins[4] + " WINS\n" +
+                   "🔹 **LEVEL 5:** " + levelWins[5] + " WINS\n" +
+                   "🔹 **LEVEL 6:** " + levelWins[6] + " WINS\n" +
+                   "🔹 **LEVEL 7:** " + levelWins[7] + " WINS\n" +
+                   "🔹 **LEVEL 8:** " + levelWins[8] + " WINS\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
