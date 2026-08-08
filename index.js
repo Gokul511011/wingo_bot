@@ -130,10 +130,26 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // browser_scraper=true சேர்க்கப்பட்டு 403 bypass செய்யப்பட்டுள்ளது
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
-        const response = await axios.get(scraperUrl, { timeout: 25000 });
-        rawContent = response?.data;
+        // Method 1: ScrapingAnt with Residential Proxy parameter
+        try {
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&proxy_type=residential`;
+            const response = await axios.get(scraperUrl, { timeout: 15000 });
+            rawContent = response?.data;
+        } catch (e1) {
+            // Method 2: Fallback via CodeTabs CORS Proxy
+            try {
+                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(TARGET_URL)}`;
+                const response = await axios.get(proxyUrl, { timeout: 10000 });
+                rawContent = response?.data;
+            } catch (e2) {
+                // Method 3: Fallback via CorsProxy
+                try {
+                    const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`;
+                    const response = await axios.get(proxyUrl2, { timeout: 10000 });
+                    rawContent = response?.data;
+                } catch (e3) {}
+            }
+        }
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
@@ -292,4 +308,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 10000);
+setInterval(fetchWinGoData, 6000);
