@@ -8,16 +8,17 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-// Target URL wrapped with ScraperAPI
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
-const SCRAPER_API_KEY = 'bd8b62562410a6237dd1cb256b638f32'; 
-const TARGET_URL = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&render=true`;
+const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
+
+// browser=true கொடுத்துள்ளதால் Cloudflare எளிதாக பைபாஸ் செய்யப்படும்
+const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&browser=true`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Bot Active with ScrapingAnt!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -125,14 +126,23 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const response = await axios.get(TARGET_URL, { timeout: 25000 });
-        let parsedData = response.data;
+        const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
+        
+        let rawContent = response.data.content || response.data;
+        let parsedData = null;
 
-        if (typeof parsedData === 'string') {
-            const jsonMatch = parsedData.match(/\{[\s\S]*\}/);
+        if (typeof rawContent === 'object') {
+            parsedData = rawContent;
+        } else if (typeof rawContent === 'string') {
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 parsedData = JSON.parse(jsonMatch[0]);
             }
+        }
+
+        if (!parsedData) {
+            console.log("Empty or Invalid Response from ScrapingAnt, retrying...");
+            return;
         }
 
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
@@ -284,7 +294,7 @@ async function fetchWinGoData() {
 async function startContinuousLoop() {
     while (true) {
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 6000));
     }
 }
 
