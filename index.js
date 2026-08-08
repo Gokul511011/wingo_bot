@@ -8,21 +8,19 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
-
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Continuous Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Bot is Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
         await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
     } catch (e) {
-        console.error("Startup Notification Error:", e.message);
+        console.error("Startup Error:", e.message);
     }
     runLoop();
 });
@@ -118,50 +116,27 @@ function deepHistoryPatternEngine(history) {
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, mainColor };
 
     } catch (e) {
-        console.error("Pattern Engine Error:", e.message);
         return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", mainColor: "GREEN" };
     }
 }
 
 async function fetchWinGoData() {
     try {
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=false`;
-        
-        const response = await axios.get(scraperUrl, { timeout: 30000 });
-        let rawContent = response?.data;
-
-        console.log("--- RAW SCRAPINGANT RESPONSE TYPE ---:", typeof rawContent);
-        if (typeof rawContent === 'object') {
-            console.log("--- RAW RESPONSE KEYS ---:", Object.keys(rawContent));
-            console.log("--- RAW CONTENT PREVIEW ---:", JSON.stringify(rawContent).substring(0, 300));
-        } else {
-            console.log("--- RAW STRING PREVIEW ---:", String(rawContent).substring(0, 300));
-        }
-
-        let jsonStr = "";
-        if (typeof rawContent === 'object') {
-            if (rawContent.content) jsonStr = rawContent.content;
-            else jsonStr = JSON.stringify(rawContent);
-        } else {
-            jsonStr = rawContent;
-        }
-
-        jsonStr = jsonStr.replace(/<[^>]*>/g, '').trim();
-
-        let parsedData = null;
-        try {
-            parsedData = JSON.parse(jsonStr);
-        } catch (e) {
-            const match = jsonStr.match(/\{[\s\S]*\}/);
-            if (match) {
-                try { parsedData = JSON.parse(match[0]); } catch (err) {}
+        const response = await axios.get(TARGET_URL, {
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Referer': 'https://www.rajastake7.com/',
+                'Origin': 'https://www.rajastake7.com'
             }
-        }
+        });
 
+        let parsedData = response.data;
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Empty response or structure issue, retrying...");
+            console.log("Data structure not matching, retrying...");
             return;
         }
 
@@ -307,10 +282,10 @@ async function fetchWinGoData() {
 }
 
 async function runLoop() {
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     while (true) {
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 8000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
 }
 
