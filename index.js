@@ -55,14 +55,14 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Advanced Multi-Pattern Engine: Detects Zig-Zag, Double, Triple, Mirror, Dragon & Breakpoints using 2000 History
-function smartPatternBreakEngine(history) {
+// Ultra Responsive Trend Engine (Zig-Zag, Double, Triple, Mirror & Dragon Matcher)
+function dynamicTrendMatcherEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
         if (allResults.length < 15) {
-            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN" };
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Standard Start" };
         }
 
         let r1 = allResults[0];
@@ -72,40 +72,39 @@ function smartPatternBreakEngine(history) {
         let r5 = allResults[4];
 
         let predResult = "BIG";
-        let detectedPatternName = "Trend Follow";
+        let detectedPatternName = "Dynamic Trend Follow";
 
-        // 1. Zig-Zag Detection (e.g., Big, Small, Big, Small)
+        // 1. Zig-Zag (Alternative: Big, Small, Big, Small)
         if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
             detectedPatternName = "Zig-Zag Pattern";
-            // In zig-zag, check if it's about to reverse or continue
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
         }
-        // 2. Double Pattern Detection (e.g., Big, Big, Small, Small)
+        // 2. Double Pattern (Big, Big, Small, Small)
         else if (r1 === r2 && r3 === r4 && r2 !== r3) {
             detectedPatternName = "Double Pattern";
-            predResult = r1; // Follow the block type
+            predResult = r1; 
         }
-        // 3. Triple Pattern / Dragon Detection (e.g., Big, Big, Big)
+        // 3. Triple / Dragon Pattern (Long Streaks)
         else if (r1 === r2 && r2 === r3) {
-            detectedPatternName = "Dragon / Triple Streak";
-            // If streak is too long (>=4), prepare for break/reversal
             if (r1 === r2 && r2 === r3 && r3 === r4) {
-                predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Break reversal alert
+                detectedPatternName = "Dragon Break (Reversal)";
+                predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Break after long dragon
             } else {
-                predResult = r1; // Continue dragon
+                detectedPatternName = "Dragon / Triple Streak";
+                predResult = r1; // Continue streak
             }
         }
-        // 4. Mirror Pattern Check
+        // 4. Mirror Pattern
         else if (r1 === r5 && r2 === r4 && r1 !== r2) {
             detectedPatternName = "Mirror Pattern";
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
         }
         else {
-            // Default intelligent fallback based on immediate previous result
+            detectedPatternName = "Direct Follow Trend";
             predResult = r1;
         }
 
-        // Deep 2000 history matching for exact 2-number generation
+        // Deep history frequency alignment for exact numbers
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let baseMatchedNumbers = [];
 
@@ -144,11 +143,11 @@ function smartPatternBreakEngine(history) {
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, detectedPatternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Default" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Fallback Trend" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Pro Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Dynamic Trend Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -218,7 +217,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **PRO PATTERN MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **DYNAMIC TREND MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -243,11 +242,11 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = smartPatternBreakEngine(list);
+        let pred = dynamicTrendMatcherEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S PRO PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S TREND PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                   "🧩 **PATTERN:** `" + pred.detectedPatternName + "`\n" +
@@ -295,6 +294,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Pro Pattern Engine Bot Active on port " + PORT); 
+    console.log("Dynamic Trend Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
