@@ -1,6 +1,9 @@
-const https = require('https');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+
+puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -13,7 +16,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Fast API Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Stealth Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -119,31 +122,33 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-function httpFetch(url) {
-    return new Promise((resolve, reject) => {
-        const options = {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*'
-            }
-        };
-        https.get(url, options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    resolve(JSON.parse(data));
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        }).on('error', reject);
-    });
+let browser = null;
+let page = null;
+
+async function initBrowser() {
+    if (!browser) {
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu'
+            ]
+        });
+        page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    }
 }
 
 async function fetchWinGoData() {
     try {
-        let parsedData = await httpFetch(TARGET_URL);
+        await initBrowser();
+        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
+
+        const content = await page.evaluate(() => document.body.innerText);
+        let parsedData = JSON.parse(content);
 
         if (!parsedData) {
             console.log("Empty Response, retrying...");
@@ -293,6 +298,10 @@ async function fetchWinGoData() {
         }
     } catch (error) {
         console.error('[API FETCH ERROR]:', error.message);
+        if (browser) {
+            await browser.close().catch(() => {});
+            browser = null;
+        }
     }
 }
 
