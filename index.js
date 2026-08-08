@@ -2,11 +2,9 @@ const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
-// Express Server for Render Uptime
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Configuration
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
@@ -132,20 +130,23 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
+        // Attempt 1: Direct Request with Dynamic Mobile Headers
         try {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 4000,
+                timeout: 3000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
                     'Accept': 'application/json, text/plain, */*',
+                    'Origin': 'https://www.rajastake7.com',
                     'Referer': 'https://www.rajastake7.com/'
                 }
             });
             rawContent = directRes.data;
         } catch (err) {
+            // Attempt 2: ScrapingAnt Proxy Route
             try {
-                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-                const response = await axios.get(scraperUrl, { timeout: 5000 });
+                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
+                const response = await axios.get(scraperUrl, { timeout: 4000 });
                 rawContent = response.data;
             } catch (e) {}
         }
@@ -157,10 +158,12 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("No data list fetched. Retrying next cycle...");
+            console.log("API response blocked or empty. Retrying...");
             isFetching = false;
             return;
         }
+
+        console.log("Successfully fetched data! Total items:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -306,4 +309,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 2000);
+setInterval(fetchWinGoData, 2500);
