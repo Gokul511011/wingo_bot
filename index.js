@@ -127,10 +127,17 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // ScrapingAnt call with browser scraper enabled to pass Cloudflare 403
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
+        // ScrapingAnt official endpoint
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}`;
         
-        const response = await axios.get(scraperUrl, { timeout: 30000 });
+        // Passing API Key in x-api-key Header as requested by ScrapingAnt docs
+        const response = await axios.get(scraperUrl, {
+            headers: {
+                'x-api-key': SCRAPINGANT_API_KEY
+            },
+            timeout: 15000
+        });
+
         rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
@@ -285,11 +292,11 @@ async function fetchWinGoData() {
     }
 }
 
-// Fixed delay: 15 seconds wait ensures 409 limit is NEVER hit on ScrapingAnt
 async function runLoop() {
     while (true) {
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 15000));
+        // 5 seconds gap for non-stop updates
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
 }
 
