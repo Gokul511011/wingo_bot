@@ -19,7 +19,7 @@ const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 let lastSentPeriod = "";
 let lastPredictedResult = null;
 let lastPredictedPeriod = null;
-let totalWins = 0, totalLosses = 0, totalJackpots = 0, maintenanceLevel = 1, totalProfitLoss = 0, predictionCount = 0;
+let totalWins = 0, totalLosses = 0, maintenanceLevel = 1, totalProfitLoss = 0, predictionCount = 0;
 
 const levelData = {
     1: { name: "₹1", val: 1 }, 2: { name: "₹3", val: 3 }, 3: { name: "₹7", val: 7 }, 4: { name: "₹20", val: 20 },
@@ -28,27 +28,23 @@ const levelData = {
 
 function getBetVal(level) { return levelData[level] ? levelData[level].val : Math.pow(3, level - 1); }
 
-function deepHistoryPatternEngine(history) {
-    let allNumbers = history.map(x => parseInt(x.number ?? x.result ?? 0));
-    let r1 = allNumbers[0] >= 5 ? "BIG" : "SMALL";
-    let r2 = allNumbers[1] >= 5 ? "BIG" : "SMALL";
-    let predResult = (r1 === r2) ? r1 : (r1 === "BIG" ? "SMALL" : "BIG");
-    let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
-    return { predResult, colorStr };
-}
+// பிரவுசரில் Cannot GET / வராமல் இருக்க இது உதவுகிறது
+app.get('/', (req, res) => res.send('WinGo 30S Bot Active and Running!'));
 
 async function fetchWinGoData() {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
-        let list = response.data?.data?.list || response.data?.list;
+        let rawContent = response.data.content || response.data;
+        let parsedData = typeof rawContent === 'object' ? rawContent : JSON.parse(rawContent.match(/\{[\s\S]*\}/)[0]);
+        let list = parsedData?.data?.list || parsedData?.list;
+
         if (!list || !Array.isArray(list) || list.length === 0) return;
 
         let lastItem = list[0];
-        // இங்குதான் மாற்றம் - undefined வராமல் தடுக்க செக் செய்கிறோம்
-        let actualPeriod = String(lastItem.issueName ?? lastItem.issue ?? lastItem.period ?? "");
+        let actualPeriod = String(lastItem.issueName || lastItem.issueNumber || lastItem.period || lastItem.issue || lastItem.issueCode || "");
         if (!actualPeriod) return; 
 
-        let actualNum = parseInt(lastItem.number ?? lastItem.result ?? 0);
+        let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : (lastItem.result !== undefined ? lastItem.result : 0));
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
         let dynamicStatusMsg = "";
@@ -71,24 +67,38 @@ async function fetchWinGoData() {
             }
 
             if (predictionCount >= 60) {
-                let summaryMsg = `📊 **60 ROUNDS SUMMARY**\n🎯 **WINS:** ${totalWins} | 💔 **LOSSES:** ${totalLosses}\n💰 **PROFIT:** ₹${totalProfitLoss.toFixed(2)}`;
+                let summaryMsg = `📊 **60 ROUNDS SUMMARY REPORT**\n🎯 **WINS:** ${totalWins} | 💔 **LOSSES:** ${totalLosses}\n💰 **PROFIT:** ₹${totalProfitLoss.toFixed(2)}`;
+                
+                // மெயின் சேனல் மற்றும் ரிப்போர்ட் சேனல் இரண்டிற்கும் Summary அனுப்பப்படும்
                 await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
+
                 predictionCount = 0; totalWins = 0; totalLosses = 0; totalProfitLoss = 0; maintenanceLevel = 1;
             }
         }
 
         if (nextPeriod !== lastSentPeriod) {
-            let pred = deepHistoryPatternEngine(list);
-            let msg = `🔥 **WINGO 30S** 🔥\n📌 **PERIOD:** \`${nextPeriod}\`\n🎲 **BET:** **${pred.predResult}**\n🎨 **COLOUR:** ${pred.colorStr}\n💰 **LEVEL:** ${maintenanceLevel}\n━━━━━━━━━━━━\n${dynamicStatusMsg}\n🔗 ${REGISTER_LINK}`;
+            let r1 = parseInt(list[0].number ?? list[0].result ?? 0) >= 5 ? "BIG" : "SMALL";
+            let r2 = parseInt(list[1].number ?? list[1].result ?? 0) >= 5 ? "BIG" : "SMALL";
+            let predResult = (r1 === r2) ? r1 : (r1 === "BIG" ? "SMALL" : "BIG");
+            let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+
+            let msg = `🔥 **WINGO 30S** 🔥\n📌 **PERIOD:** \`${nextPeriod}\`\n🎲 **BET:** **${predResult}**\n🎨 **COLOUR:** ${colorStr}\n💰 **LEVEL:** ${maintenanceLevel}\n━━━━━━━━━━━━\n${dynamicStatusMsg}\n🔗 ${REGISTER_LINK}`;
             
+            // Prediction மெயின் சேனலுக்கு மட்டும் அனுப்பப்படும்
             await bot.sendMessage(MAIN_CHANNEL, msg, { parse_mode: 'Markdown' });
+            
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
-            lastPredictedResult = pred.predResult;
+            lastPredictedResult = predResult;
+            console.log("Sent Period:", nextPeriod);
         }
     } catch (e) { console.error("Error:", e.message); }
 }
 
 async function startContinuousLoop() { while (true) { await fetchWinGoData(); await new Promise(r => setTimeout(r, 6000)); } }
-app.listen(PORT, '0.0.0.0', () => { console.log("Bot Active"); startContinuousLoop(); });
+
+app.listen(PORT, '0.0.0.0', () => { 
+    console.log("Bot Active on port " + PORT); 
+    startContinuousLoop(); 
+});
