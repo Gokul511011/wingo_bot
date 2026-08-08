@@ -24,18 +24,22 @@ let lastPredictedPeriod = null;
 let totalWins = 0;
 let totalLosses = 0;
 let totalJackpots = 0;
-let maintenanceLevel = 1; // Strict capping up to level 4 max
+let maintenanceLevel = 1; 
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
 
-let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0 };
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
     1: { name: "₹1", val: 1 },
     2: { name: "₹3", val: 3 },
-    3: { name: "₹9", val: 9 },
-    4: { name: "₹27", val: 27 }
+    3: { name: "₹7", val: 7 },
+    4: { name: "₹20", val: 20 },
+    5: { name: "₹50", val: 50 },
+    6: { name: "₹150", val: 150 },
+    7: { name: "₹450", val: 450 },
+    8: { name: "₹1350", val: 1350 }
 };
 
 function getBetVal(level) {
@@ -51,7 +55,6 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Advanced Dragon & Block Pattern Engine (3-1-3, 2-1-2-1, 4-4-2-2, 5-1-4 etc.) with Break Detection
 function dragonBlockPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -61,7 +64,6 @@ function dragonBlockPatternEngine(history) {
             return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN" };
         }
 
-        // Convert sequence into consecutive block counts (e.g., [3, 1, 3] means 3 Bigs, 1 Small, 3 Bigs)
         let blocks = [];
         let currentType = allResults[0];
         let currentCount = 0;
@@ -77,19 +79,15 @@ function dragonBlockPatternEngine(history) {
         }
         blocks.push({ type: currentType, count: currentCount });
 
-        // Analyze recent block structure to detect breaking patterns or continuing dragon blocks
         let recentCounts = blocks.slice(0, 5).map(b => b.count);
         let latestBlockType = blocks[0].type;
         let latestBlockCount = blocks[0].count;
 
         let predResult = "BIG";
 
-        // Dragon / Block Break Detection Logic
         if (latestBlockCount >= 4) {
-            // If a single block has grown too large (e.g., 4 or more continuous Big/Small), pattern is about to break!
             predResult = latestBlockType === "BIG" ? "SMALL" : "BIG";
         } else if (recentCounts.length >= 3) {
-            // Check matching block sequences in history for high accuracy
             let b1 = recentCounts[0];
             let b2 = recentCounts[1];
             let b3 = recentCounts[2];
@@ -108,7 +106,6 @@ function dragonBlockPatternEngine(history) {
             if (matchBigNext + matchSmallNext >= 2) {
                 predResult = matchBigNext >= matchSmallNext ? "BIG" : "SMALL";
             } else {
-                // Default anti-trend switch based on recent alternation
                 predResult = latestBlockType === "BIG" ? "SMALL" : "BIG";
             }
         } else {
@@ -118,6 +115,7 @@ function dragonBlockPatternEngine(history) {
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let baseMatchedNumbers = [];
 
+        // Strictly set to return only 2 numbers
         if (predResult === "BIG") {
             if ([5, 0].includes(lastNum)) baseMatchedNumbers = [6, 8];
             else if ([6, 1].includes(lastNum)) baseMatchedNumbers = [7, 9];
@@ -132,14 +130,14 @@ function dragonBlockPatternEngine(history) {
             else baseMatchedNumbers = [1, 2];
         }
 
-        let matchedNumbers = [...baseMatchedNumbers];
+        let matchedNumbers = baseMatchedNumbers.slice(0, 2); // Strict 2 numbers limit
         let counts = {};
-        baseMatchedNumbers.forEach(n => counts[n] = 0);
+        matchedNumbers.forEach(n => counts[n] = 0);
 
         for (let i = 0; i < history.length - 1; i++) {
             let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
             let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
-            if (currN === lastNum && baseMatchedNumbers.includes(nextN)) {
+            if (currN === lastNum && matchedNumbers.includes(nextN)) {
                 counts[nextN]++;
             }
         }
@@ -156,7 +154,7 @@ function dragonBlockPatternEngine(history) {
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Dragon Bot Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S 2-Number Bot Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -174,7 +172,18 @@ async function fetchWinGoData() {
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : (lastItem.result !== undefined ? lastItem.result : 0));
         let actualResult = actualNum >= 5 ? "BIG" : "SMALL";
         let actualColor = getNumberColor(actualNum);
+        
         let nextPeriod = String(BigInt(actualPeriod) + 1n);
+
+        let currentSec = new Date().getSeconds();
+        let secondsIntoPeriod = currentSec % 30;
+        
+        if (nextPeriod === lastSentPeriod) return; 
+
+        if (secondsIntoPeriod < 18 && secondsIntoPeriod > 3) {
+            return;
+        }
+
         let dynamicStatusMsg = "";
 
         if (lastPredictedPeriod && lastPredictedPeriod === actualPeriod) {
@@ -199,14 +208,13 @@ async function fetchWinGoData() {
                 } else {
                     dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel} (₹${winAmount} WIN))** 🎉\n🏆 **${actualResult} (${actualNum}) WIN**`;
                 }
-                maintenanceLevel = 1; // Reset back to Level 1 on Win
+                maintenanceLevel = 1; 
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
                 
-                // STRICT CAPPING: Never exceed Level 4! If Level 4 fails, reset to Level 1 safely.
-                if (maintenanceLevel >= 4) {
-                    dynamicStatusMsg = `💔 **LOSS AT LEVEL 4: ${actualResult} (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
+                if (maintenanceLevel >= 8) {
+                    dynamicStatusMsg = `💔 **LOSS AT LEVEL 8: ${actualResult} (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
                     maintenanceLevel = 1;
                 } else {
                     maintenanceLevel++;
@@ -231,6 +239,10 @@ async function fetchWinGoData() {
                                  "🔹 LEVEL 2: " + levelWins[2] + " WINS\n" +
                                  "🔹 LEVEL 3: " + levelWins[3] + " WINS\n" +
                                  "🔹 LEVEL 4: " + levelWins[4] + " WINS\n" +
+                                 "🔹 LEVEL 5: " + levelWins[5] + " WINS\n" +
+                                 "🔹 LEVEL 6: " + levelWins[6] + " WINS\n" +
+                                 "🔹 LEVEL 7: " + levelWins[7] + " WINS\n" +
+                                 "🔹 LEVEL 8: " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
@@ -243,53 +255,61 @@ async function fetchWinGoData() {
                 totalJackpots = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
-                levelWins = { 1: 0, 2: 0, 3: 0, 4: 0 };
+                levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
 
-        if (nextPeriod !== lastSentPeriod) {
-            let pred = dragonBlockPatternEngine(list);
-            let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
-            let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
+        let pred = dragonBlockPatternEngine(list);
+        let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
+        let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-            let msg = "🔥 **WINGO 30S DRAGON PREDICTION** 🔥\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n" +
-                      "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                      "🎲 **BET:** **" + pred.predResult + "**\n" +
-                      "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
-                      "🎨 **COLOUR:** " + pred.colorStr + "\n" +
-                      "💰 **BET LEVEL AMT:** **LEVEL " + maintenanceLevel + " (" + currentBetName + ")** [MAX: L4]\n" +
-                      "━━━━━━━━━━━━━━━━━━━━━\n";
+        let msg = "🔥 **WINGO 30S DRAGON PREDICTION** 🔥\n" +
+                  "━━━━━━━━━━━━━━━━━━━━━\n" +
+                  "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                  "🎲 **BET:** **" + pred.predResult + "**\n" +
+                  "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
+                  "🎨 **COLOUR:** " + pred.colorStr + "\n" +
+                  "💰 **BET LEVEL AMT:** **LEVEL " + maintenanceLevel + " (" + currentBetName + ")** [MAX: L8]\n" +
+                  "━━━━━━━━━━━━━━━━━━━━━\n";
 
-            if (dynamicStatusMsg !== "") {
-                msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
-            }
-
-            msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
-                   "🏆 **B/S WINS:** " + totalWins + " | 💥 **JK:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
-                   "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
-                   "━━━━━━━━━━━━━━━━━━━━━\n" +
-                   "🎯 **LIVE LEVEL WINS:**\n" +
-                   "🔹 **LEVEL 1:** " + levelWins[1] + " WINS\n" +
-                   "🔹 **LEVEL 2:** " + levelWins[2] + " WINS\n" +
-                   "🔹 **LEVEL 3:** " + levelWins[3] + " WINS\n" +
-                   "🔹 **LEVEL 4:** " + levelWins[4] + " WINS\n" +
-                   "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-                   "🔗 **Register Link:**\n" + REGISTER_LINK;
-
-            await bot.sendMessage(MAIN_CHANNEL, msg, { parse_mode: 'Markdown' });
-
-            lastSentPeriod = nextPeriod;
-            lastPredictedPeriod = nextPeriod;
-            lastPredictedResult = pred.predResult;
-            lastPredictedNumbers = pred.targetNumbers;
+        if (dynamicStatusMsg !== "") {
+            msg += dynamicStatusMsg + "\n━━━━━━━━━━━━━━━━━━━━━\n";
         }
+
+        msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
+               "🏆 **B/S WINS:** " + totalWins + " | 💥 **JK:** " + totalJackpots + " | 💔 **LOSS:** " + totalLosses + "\n" +
+               "📊 **TOTAL PROFIT:** **" + profitSign + "**\n" +
+               "━━━━━━━━━━━━━━━━━━━━━\n" +
+               "🎯 **LIVE LEVEL WINS (L1 - L8):**\n" +
+               "🔹 **LEVEL 1:** " + levelWins[1] + " WINS\n" +
+               "🔹 **LEVEL 2:** " + levelWins[2] + " WINS\n" +
+               "🔹 **LEVEL 3:** " + levelWins[3] + " WINS\n" +
+               "🔹 **LEVEL 4:** " + levelWins[4] + " WINS\n" +
+               "🔹 **LEVEL 5:** " + levelWins[5] + " WINS\n" +
+               "🔹 **LEVEL 6:** " + levelWins[6] + " WINS\n" +
+               "🔹 **LEVEL 7:** " + levelWins[7] + " WINS\n" +
+               "🔹 **LEVEL 8:** " + levelWins[8] + " WINS\n" +
+               "━━━━━━━━━━━━━━━━━━━━━\n\n" +
+               "🔗 **Register Link:**\n" + REGISTER_LINK;
+
+        await bot.sendMessage(MAIN_CHANNEL, msg, { parse_mode: 'Markdown' });
+
+        lastSentPeriod = nextPeriod;
+        lastPredictedPeriod = nextPeriod;
+        lastPredictedResult = pred.predResult;
+        lastPredictedNumbers = pred.targetNumbers;
+
     } catch (e) { console.error("Error:", e.message); }
 }
 
-async function startContinuousLoop() { while (true) { await fetchWinGoData(); await new Promise(r => setTimeout(r, 6000)); } }
+async function startContinuousLoop() { 
+    while (true) { 
+        await fetchWinGoData(); 
+        await new Promise(r => setTimeout(r, 3000)); 
+    } 
+}
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Dragon Bot Active on port " + PORT); 
+    console.log("Dragon 2-Number Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
