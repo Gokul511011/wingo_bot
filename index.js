@@ -11,8 +11,8 @@ const CHANNEL_ID = '-1002486828817';
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 
-// browser=false கொடுத்துள்ளதால் நேரடியாக API மூலம் துல்லியமாக JSON கிடைக்கும்
-const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&browser=false`;
+// சரியான URL Format மற்றும் Indian Proxy உடன் ScrapingAnt எண்ட்பாயிண்ட்
+const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -126,16 +126,19 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
+        const response = await axios.get(SCRAPINGANT_URL, { 
+            headers: {
+                'Accept': 'application/json'
+            },
+            timeout: 30000 
+        });
         
-        // ScrapingAnt returns parsed content or raw string body
         let rawContent = response.data.content || response.data;
         let parsedData = null;
 
         if (typeof rawContent === 'object') {
             parsedData = rawContent;
         } else if (typeof rawContent === 'string') {
-            // Remove html tags if any wrapping occurred, then parse JSON
             const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 parsedData = JSON.parse(jsonMatch[0]);
