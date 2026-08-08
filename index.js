@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
+const BASE_URL = 'https://draw.ar-lottery01.com/';
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -124,6 +125,7 @@ function deepHistoryPatternEngine(history) {
 
 let browser = null;
 let page = null;
+let isInitialized = false;
 
 async function initBrowser() {
     if (!browser) {
@@ -133,31 +135,44 @@ async function initBrowser() {
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--window-size=1920,1080'
             ]
         });
         page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+        
+        // Bypass Cloudflare on base site first
+        console.log("Navigating to Base Domain to bypass Cloudflare...");
+        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        isInitialized = true;
     }
 }
 
 async function fetchWinGoData() {
     try {
-        await initBrowser();
-        await page.goto(TARGET_URL, { waitUntil: 'networkidle2', timeout: 30000 });
-
-        const rawText = await page.evaluate(() => document.body.innerText || document.body.textContent);
-        
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            console.log("Valid JSON pattern not found in page content, retrying...");
-            return;
+        if (!isInitialized) {
+            await initBrowser();
         }
 
-        let parsedData = JSON.parse(jsonMatch[0]);
+        // Fetch via in-page fetch using existing browser context & cookies
+        let parsedData = await page.evaluate(async (url) => {
+            try {
+                let res = await fetch(url, {
+                    headers: {
+                        'Accept': 'application/json, text/plain, */*'
+                    }
+                });
+                return await res.json();
+            } catch (e) {
+                return null;
+            }
+        }, TARGET_URL);
 
         if (!parsedData) {
-            console.log("Empty Response, retrying...");
+            console.log("Fetch failed or Cloudflare block active, refreshing page...");
+            await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
             return;
         }
 
@@ -307,6 +322,7 @@ async function fetchWinGoData() {
         if (browser) {
             await browser.close().catch(() => {});
             browser = null;
+            isInitialized = false;
         }
     }
 }
