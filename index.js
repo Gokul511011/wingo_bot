@@ -11,7 +11,6 @@ const CHANNEL_ID = '-1002486828817';
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 
-// சரியான URL Format மற்றும் Indian Proxy உடன் ScrapingAnt எண்ட்பாயிண்ட்
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -127,9 +126,7 @@ function deepHistoryPatternEngine(history) {
 async function fetchWinGoData() {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { 
-            headers: {
-                'Accept': 'application/json'
-            },
+            headers: { 'Accept': 'application/json' },
             timeout: 30000 
         });
         
@@ -172,6 +169,7 @@ async function fetchWinGoData() {
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = getBetVal(currentLevelExecuted);
+            let currentBetName = levelData[currentLevelExecuted]?.name || ("₹" + currentBetVal);
 
             if (currentLevelExecuted > maxLevelReached) {
                 maxLevelReached = currentLevelExecuted;
@@ -188,14 +186,14 @@ async function fetchWinGoData() {
                     levelWins[currentLevelExecuted] = 1;
                 }
 
-                let winAmount = currentBetVal * 0.98;
-                totalProfitLoss += winAmount;
+                let winAmount = (currentBetVal * 0.98).toFixed(2);
+                totalProfitLoss += parseFloat(winAmount);
 
                 if (isNumberHit) {
                     totalJackpots++;
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") JACKPOT WINNER** 🏆";
+                    dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${currentLevelExecuted} (₹${winAmount} JACKPOT WIN))** 🎉\n🏆 **${actualResult} (${actualNum}) JACKPOT HIT**`;
                 } else {
-                    dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
+                    dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${currentLevelExecuted} (₹${winAmount} WIN))** 🎉\n🏆 **${actualResult} (${actualNum}) WIN**`;
                 }
 
                 maintenanceLevel = 1; 
@@ -204,7 +202,7 @@ async function fetchWinGoData() {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                dynamicStatusMsg = "💔 **LOSS: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
+                dynamicStatusMsg = `💔 **LOSS: ${actualResult} (${actualNum} - ${actualColor})**\n➡️ **NEXT LEVEL PARTHU KIRAM (LEVEL ${maintenanceLevel + 1})**`;
 
                 maintenanceLevel++; 
             }
