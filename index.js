@@ -6,7 +6,9 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
-const CHANNEL_ID = '-1002486828817';
+
+// இரண்டும் ஒரே நேரத்தில் மெசேஜ் பெற வேண்டிய ஐடிகள்
+const CHANNEL_IDS = ['-1002486828817', '-1003345976502'];
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
@@ -17,12 +19,23 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Bot Active with ScrapingAnt!'));
+// அனைத்து சேனல்களுக்கும் ஒரே நேரத்தில் மெசேஜ் அனுப்பும் வசதி
+async function sendToAllChannels(message, options = {}) {
+    for (const channelId of CHANNEL_IDS) {
+        try {
+            await bot.sendMessage(channelId, message, options);
+        } catch (e) {
+            console.error(`Error sending to channel ${channelId}:`, e.message);
+        }
+    }
+}
+
+app.get('/', (req, res) => res.send('WinGo 30S Multi-Channel Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
     try {
-        await bot.sendMessage(CHANNEL_ID, "🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
+        await sendToAllChannels("🚀 **WinGo Bot Live & Running Non-Stop...**", { parse_mode: 'Markdown' });
     } catch (e) {
         console.error("Startup Error:", e.message);
     }
@@ -169,7 +182,6 @@ async function fetchWinGoData() {
 
             let currentLevelExecuted = maintenanceLevel;
             let currentBetVal = getBetVal(currentLevelExecuted);
-            let currentBetName = levelData[currentLevelExecuted]?.name || ("₹" + currentBetVal);
 
             if (currentLevelExecuted > maxLevelReached) {
                 maxLevelReached = currentLevelExecuted;
@@ -231,7 +243,7 @@ async function fetchWinGoData() {
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
-                await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
+                await sendToAllChannels(summaryMsg, { parse_mode: 'Markdown' });
 
                 predictionCount = 0;
                 totalWins = 0;
@@ -280,14 +292,14 @@ async function fetchWinGoData() {
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-            await bot.sendMessage(CHANNEL_ID, msg, { parse_mode: 'Markdown' });
+            await sendToAllChannels(msg, { parse_mode: 'Markdown' });
 
             lastSentPeriod = nextPeriod;
             lastPredictedPeriod = nextPeriod;
             lastPredictedResult = pred.predResult;
             lastPredictedNumbers = pred.targetNumbers;
             lastPredictedColor = pred.mainColor;
-            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
+            console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " to all channels (" + predictionCount + "/60)");
         }
     } catch (error) {
         console.error('[API FETCH ERROR]:', error.message);
