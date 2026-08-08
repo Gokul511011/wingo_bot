@@ -8,8 +8,6 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
-
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -24,7 +22,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (e) {
         console.error("Startup Notification Error:", e.message);
     }
-    // Start continuous execution cycle
+    // Start cycle
     runLoop();
 });
 
@@ -126,13 +124,18 @@ function deepHistoryPatternEngine(history) {
 
 async function fetchWinGoData() {
     try {
-        let rawContent = null;
+        // Direct Header Spoofing for Bypass without Proxy Errors
+        const response = await axios.get(TARGET_URL, {
+            timeout: 8000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Referer': 'https://www.rajastake7.com/'
+            }
+        });
 
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
-        
-        // Timeout increased to 25s for ScrapingAnt headless browser
-        const response = await axios.get(scraperUrl, { timeout: 25000 });
-        rawContent = response?.data;
+        let rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
@@ -286,11 +289,9 @@ async function fetchWinGoData() {
     }
 }
 
-// Sequential execution loop to completely avoid 409 Concurrency limits
 async function runLoop() {
     while (true) {
         await fetchWinGoData();
-        // Wait 3 seconds after each request finishes before calling again
         await new Promise(resolve => setTimeout(resolve, 3000));
     }
 }
