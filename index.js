@@ -128,22 +128,11 @@ async function fetchWinGoData() {
     isFetching = true;
 
     try {
-        let response = null;
+        let rawContent = null;
 
-        // Original First Working Route
-        try {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
-            response = await axios.get(scraperUrl, { timeout: 10000 });
-        } catch (e) {
-            try {
-                response = await axios.get(TARGET_URL, {
-                    timeout: 4000,
-                    headers: { 'User-Agent': 'Mozilla/5.0' }
-                });
-            } catch (err) {}
-        }
-
-        let rawContent = response?.data;
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
+        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
@@ -152,12 +141,11 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("No data list fetched. Retrying next cycle...");
-            isFetching = false;
+            console.log("Empty or Invalid Data. Retrying...");
             return;
         }
 
-        console.log("Data fetched successfully! Count:", list.length);
+        console.log("SUCCESS! Data fetched properly. Records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -303,4 +291,5 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 3000);
+// Concurrency Limit 1-ஐ சமாளிக்க Interval time 8000ms (8 seconds) ஆக்கப்பட்டிருக்கிறது.
+setInterval(fetchWinGoData, 8000);
