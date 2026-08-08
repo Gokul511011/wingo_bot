@@ -68,33 +68,26 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Improved Pattern Engine (Smart Trend + Anti Zig-Zag Guard)
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        let r1 = allResults[0]; // Recent
+        let r1 = allResults[0];
         let r2 = allResults[1];
         let r3 = allResults[2];
         let r4 = allResults[3];
 
         let predResult = "";
 
-        // 1. Alternate/Zig-Zag Pattern Check (B-S-B-S or S-B-S-B)
         if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
             predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
-        } 
-        // 2. Strong Trend Continuation (B-B or S-S)
-        else if (r1 === r2) {
+        } else if (r1 === r2) {
             predResult = r1; 
-        } 
-        // 3. Fallback Single-Cut Transition
-        else {
+        } else {
             predResult = r1;
         }
 
-        // Dynamic Target Numbers Engine based on Last Number
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         let matchedNumbers = [];
 
@@ -141,9 +134,9 @@ async function fetchWinGoData() {
 
         try {
             const directRes = await axios.get(TARGET_URL, {
-                timeout: 8000,
+                timeout: 4000,
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
                     'Accept': 'application/json, text/plain, */*',
                     'Referer': 'https://www.rajastake7.com/'
                 }
@@ -152,7 +145,7 @@ async function fetchWinGoData() {
         } catch (err) {
             try {
                 const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false&return_page_source=false`;
-                const response = await axios.get(scraperUrl, { timeout: 8000 });
+                const response = await axios.get(scraperUrl, { timeout: 5000 });
                 rawContent = response.data;
             } catch (e) {}
         }
@@ -164,6 +157,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
+            console.log("No data list fetched. Retrying next cycle...");
             isFetching = false;
             return;
         }
@@ -312,4 +306,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 3000);
+setInterval(fetchWinGoData, 2000);
