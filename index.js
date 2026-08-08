@@ -1,7 +1,4 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
-
+const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
@@ -16,7 +13,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Clean Stealth Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Fast API Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -25,7 +22,7 @@ app.listen(PORT, '0.0.0.0', async () => {
     } catch (e) {
         console.error("Startup Error:", e.message);
     }
-    initBrowserAndLoop();
+    startContinuousLoop();
 });
 
 let lastSentPeriod = "";
@@ -122,39 +119,40 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-async function fetchWinGoDataClean(browser) {
-    let page = null;
+async function fetchWinGoData() {
     try {
-        page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-        
-        // Main page load to bypass Cloudflare
-        await page.goto('https://draw.ar-lottery01.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
-        await new Promise(r => setTimeout(r, 3000));
-
-        // Evaluate fetch inside page context
-        const parsedData = await page.evaluate(async () => {
-            try {
-                const res = await fetch('https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1');
-                return await res.json();
-            } catch (e) {
-                return null;
-            }
+        const response = await axios.get(TARGET_URL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Origin': 'https://draw.ar-lottery01.com',
+                'Referer': 'https://draw.ar-lottery01.com/',
+                'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-origin'
+            },
+            timeout: 10000
         });
 
+        let parsedData = response.data;
+
         if (!parsedData) {
-            console.log("Cloudflare bypass in progress / Waiting for JSON...");
+            console.log("Empty Response, retrying...");
             return;
         }
 
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Response fetched, but list is empty. Retrying...");
+            console.log("Data list is empty, retrying...");
             return;
         }
 
-        console.log("SUCCESS! Data Extracted Cleanly. Total Records:", list.length);
+        console.log("SUCCESS! Data Fetched via API. Total Records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -291,39 +289,14 @@ async function fetchWinGoDataClean(browser) {
             console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
-        console.error('[CLEAN FETCH ERROR]:', error.message);
-    } finally {
-        if (page) {
-            try {
-                await page.close();
-            } catch (e) {}
-        }
+        console.error('[API FETCH ERROR]:', error.message);
     }
 }
 
-async function initBrowserAndLoop() {
-    try {
-        const browser = await puppeteer.launch({
-            headless: "new",
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu'
-            ]
-        });
-
-        console.log("Stealth Headless Chromium Initialized Successfully!");
-
-        while (true) {
-            await fetchWinGoDataClean(browser);
-            await new Promise(resolve => setTimeout(resolve, 3500));
-        }
-    } catch (err) {
-        console.error("Browser Startup Failed:", err.message);
+async function startContinuousLoop() {
+    while (true) {
+        await fetchWinGoData();
+        await new Promise(resolve => setTimeout(resolve, 3000));
     }
 }
 
