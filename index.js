@@ -1,14 +1,13 @@
 const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+const https = require('https');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
-
-const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -123,22 +122,28 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
+// Keep-Alive HTTPS Agent to prevent SSL/Network handshake failures
+const agent = new https.Agent({ keepAlive: true, rejectUnauthorized: false });
+
 async function fetchWinGoData() {
     try {
-        let rawContent = null;
-
-        // ScrapingAnt official endpoint
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}`;
-        
-        // Passing API Key in x-api-key Header as requested by ScrapingAnt docs
-        const response = await axios.get(scraperUrl, {
+        // Direct Request with Full Browser Spoofing Headers
+        const response = await axios.get(TARGET_URL, {
+            httpsAgent: agent,
+            timeout: 10000,
             headers: {
-                'x-api-key': SCRAPINGANT_API_KEY
-            },
-            timeout: 15000
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                'Accept': 'application/json, text/plain, */*',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Origin': 'https://www.rajastake7.com',
+                'Referer': 'https://www.rajastake7.com/',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'cross-site'
+            }
         });
 
-        rawContent = response?.data;
+        let rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
@@ -147,7 +152,7 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Empty response or structure issue, retrying...");
+            console.log("Empty response structure, retrying...");
             return;
         }
 
@@ -295,8 +300,8 @@ async function fetchWinGoData() {
 async function runLoop() {
     while (true) {
         await fetchWinGoData();
-        // 5 seconds gap for non-stop updates
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // 3 seconds delay for real-time updates
+        await new Promise(resolve => setTimeout(resolve, 3000));
     }
 }
 
