@@ -98,7 +98,6 @@ function deepHistoryPatternEngine(history) {
             let counts = {};
             baseMatchedNumbers.forEach(n => counts[n] = 0);
 
-            // Check past occurrences in history to find which base number appeared more frequently next
             for (let i = 0; i < history.length - 1; i++) {
                 let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
                 let nextN = parseInt(history[i+1].number !== undefined ? history[i+1].number : history[i+1].result);
@@ -107,7 +106,6 @@ function deepHistoryPatternEngine(history) {
                 }
             }
 
-            // Sort matched numbers based on historical frequency
             matchedNumbers.sort((a, b) => counts[b] - counts[a]);
         }
 
@@ -175,7 +173,8 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
+                let summaryMsg = "👑 **KING MASTER** 👑\n\n" +
+                                 "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
