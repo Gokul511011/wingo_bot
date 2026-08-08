@@ -55,8 +55,8 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Advanced Accurate Number & Trend Matcher Engine (2000 History Deep Scan)
-function accurateNumberTrendEngine(history) {
+// Fully Dynamic Pattern & Real Number Frequency Engine
+function realTimeDynamicNumberEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
@@ -83,7 +83,7 @@ function accurateNumberTrendEngine(history) {
             detectedPatternName = "Double Pattern";
             predResult = r1; 
         }
-        // 3. Dragon / Long Streak Detection
+        // 3. Dragon / Long Streak Detection & Reversal
         else if (r1 === r2 && r2 === r3) {
             if (r1 === r2 && r2 === r3 && r3 === r4) {
                 detectedPatternName = "Dragon Break (Reversal)";
@@ -94,13 +94,13 @@ function accurateNumberTrendEngine(history) {
             }
         }
         else {
-            detectedPatternName = "Direct Flow";
+            detectedPatternName = "Dynamic Direct Flow";
             predResult = r1;
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         
-        // Deep 2000 History Frequency Scan for Exact Numbers
+        // Deep 2000 History Frequency Scan for Exact Numbers based on last number transition
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 2000);
 
@@ -112,7 +112,7 @@ function accurateNumberTrendEngine(history) {
             }
         }
 
-        // Filter numbers matching the predicted Big/Small category
+        // Group numbers based on Big/Small prediction
         let candidateNumbers = [];
         for (let n = 0; n <= 9; n++) {
             let isBig = n >= 5;
@@ -121,16 +121,15 @@ function accurateNumberTrendEngine(history) {
             }
         }
 
-        // Sort by historical frequency to get the top 2 most accurate numbers
+        // Sort dynamically by historical transition count
         candidateNumbers.sort((a, b) => b.count - a.count);
 
         let matchedNumbers = [];
         if (candidateNumbers.length >= 2) {
+            // Pick top 2 most frequent numbers from history dynamically
             matchedNumbers = [candidateNumbers[0].num, candidateNumbers[1].num];
-        } else if (candidateNumbers.length === 1) {
-            matchedNumbers = [candidateNumbers[0].num, predResult === "BIG" ? 8 : 2];
         } else {
-            matchedNumbers = predResult === "BIG" ? [6, 8] : [1, 3];
+            matchedNumbers = predResult === "BIG" ? [7, 9] : [2, 4];
         }
 
         matchedNumbers.sort((a, b) => a - b);
@@ -139,18 +138,17 @@ function accurateNumberTrendEngine(history) {
         let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
         if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
         else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
-        else if (matchedNumbers.includes(2) || matchedNumbers.includes(4) || matchedNumbers.includes(6) || matchedNumbers.includes(8)) {
-            if (predResult === "SMALL") colorStr = "🔴 RED";
-            else colorStr = "🟢 GREEN / 🔴 RED";
+        else if (matchedNumbers.some(n => [2, 4, 6, 8].includes(n))) {
+            colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, detectedPatternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Fallback" };
+        return { predResult: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN", detectedPatternName: "Dynamic Fallback" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Accurate Number Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Real-Time Dynamic Number Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -220,7 +218,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **ACCURATE NUMBER MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **DYNAMIC NUMBER MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -245,11 +243,11 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = accurateNumberTrendEngine(list);
+        let pred = realTimeDynamicNumberEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S NUMBER & TREND PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S DYNAMIC PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
                   "🧩 **PATTERN:** `" + pred.detectedPatternName + "`\n" +
@@ -297,6 +295,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Accurate Number Engine Bot Active on port " + PORT); 
+    console.log("Dynamic Number Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
