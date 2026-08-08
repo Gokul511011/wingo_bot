@@ -9,7 +9,7 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
 // Updated API Key
-const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
+const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -132,7 +132,7 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // ScrapingAnt Browser Scraper URL Format
+        // ScrapingAnt Browser Scraper Request
         const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
         const response = await axios.get(scraperUrl, { timeout: 15000 });
         rawContent = response?.data;
