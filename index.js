@@ -1,6 +1,6 @@
-const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
+const { exec } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -13,7 +13,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Bot is Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Clean Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -120,27 +120,36 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-async function fetchWinGoData() {
-    try {
-        const response = await axios.get(TARGET_URL, {
-            timeout: 10000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
-                'Referer': 'https://www.rajastake7.com/',
-                'Origin': 'https://www.rajastake7.com'
+// System Command Line cURL to bypass Cloudflare 403 & Avoid Proxy 409
+function executeCurlRequest(url) {
+    return new Promise((resolve, reject) => {
+        const curlCmd = `curl -s -L "${url}" -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" -H "Accept: application/json, text/plain, */*" -H "Referer: https://www.rajastake7.com/" --compressed`;
+        
+        exec(curlCmd, { timeout: 15000 }, (error, stdout, stderr) => {
+            if (error) {
+                return reject(error);
+            }
+            try {
+                const parsed = JSON.parse(stdout);
+                resolve(parsed);
+            } catch (e) {
+                reject(new Error("JSON Parse Failed from response"));
             }
         });
+    });
+}
 
-        let parsedData = response.data;
+async function fetchWinGoData() {
+    try {
+        let parsedData = await executeCurlRequest(TARGET_URL);
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("Data structure not matching, retrying...");
+            console.log("Empty or Invalid Data Structure received. Retrying...");
             return;
         }
 
-        console.log("SUCCESS! Data fetched properly. Records:", list.length);
+        console.log("SUCCESS! Data fetched without 403 or 409. Records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -282,10 +291,11 @@ async function fetchWinGoData() {
 }
 
 async function runLoop() {
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     while (true) {
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Checked every 4 seconds dynamically
+        await new Promise(resolve => setTimeout(resolve, 4000));
     }
 }
 
