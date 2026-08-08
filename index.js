@@ -1,4 +1,7 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
+
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 
@@ -13,7 +16,7 @@ const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=1727
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Puppeteer Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Clean Stealth Engine Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -119,15 +122,19 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-let globalPage = null;
+let globalBrowser = null;
 
-async function fetchWinGoDataWithPuppeteer() {
+async function fetchWinGoDataClean(browser) {
+    let page = null;
     try {
-        if (!globalPage) return;
-
-        await globalPage.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        page = await browser.newPage();
         
-        const content = await globalPage.evaluate(() => document.body.innerText);
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+        
+        // Timeout & Wait settings for avoiding frame detach
+        await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 20000 });
+
+        const content = await page.evaluate(() => document.body.innerText);
 
         let parsedData = null;
         try {
@@ -140,18 +147,18 @@ async function fetchWinGoDataWithPuppeteer() {
         }
 
         if (!parsedData) {
-            console.log("Cloudflare or Empty Response, retrying...");
+            console.log("Cloudflare bypass in progress / Waiting for JSON...");
             return;
         }
 
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("No records in list, retrying...");
+            console.log("Response fetched, but list is empty. Retrying...");
             return;
         }
 
-        console.log("SUCCESS! Real Browser Fetched Data. Total Records:", list.length);
+        console.log("SUCCESS! Data Extracted Cleanly. Total Records:", list.length);
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -288,14 +295,20 @@ async function fetchWinGoDataWithPuppeteer() {
             console.log("[CONTINUOUS] Sent Period: " + nextPeriod + " (" + predictionCount + "/60)");
         }
     } catch (error) {
-        console.error('[PUPPETEER ERROR]:', error.message);
+        console.error('[CLEAN FETCH ERROR]:', error.message);
+    } finally {
+        if (page) {
+            try {
+                await page.close(); // Every loop cleans memory & frames
+            } catch (e) {}
+        }
     }
 }
 
 async function initBrowserAndLoop() {
     try {
-        const browser = await puppeteer.launch({
-            headless: 'new',
+        globalBrowser = await puppeteer.launch({
+            headless: "new",
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -303,22 +316,18 @@ async function initBrowserAndLoop() {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--single-process',
                 '--disable-gpu'
             ]
         });
 
-        globalPage = await browser.newPage();
-        await globalPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-
-        console.log("Headless Chromium Browser Initialized Successfully!");
+        console.log("Stealth Headless Chromium Initialized Successfully!");
 
         while (true) {
-            await fetchWinGoDataWithPuppeteer();
-            await new Promise(resolve => setTimeout(resolve, 4000));
+            await fetchWinGoDataClean(globalBrowser);
+            await new Promise(resolve => setTimeout(resolve, 3500));
         }
     } catch (err) {
-        console.error("Browser Init Failed:", err.message);
+        console.error("Browser Startup Failed:", err.message);
     }
 }
 
