@@ -1,9 +1,6 @@
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const axios = require('axios');
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
-
-puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -11,13 +8,16 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
-const BASE_URL = 'https://draw.ar-lottery01.com/';
-const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+// Target URL wrapped with ScraperAPI
+const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
+const SCRAPER_API_KEY = 'bd8b62562410a6237dd1cb256b638f32'; 
+const TARGET_URL = `http://api.scraperapi.com?api_key=${SCRAPER_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&render=true`;
+
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
-app.get('/', (req, res) => res.send('WinGo 30S Stealth Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Bot Active!'));
 
 app.listen(PORT, '0.0.0.0', async () => {
     console.log("Server running on port " + PORT);
@@ -123,57 +123,16 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-let browser = null;
-let page = null;
-let isInitialized = false;
-
-async function initBrowser() {
-    if (!browser) {
-        browser = await puppeteer.launch({
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--window-size=1920,1080'
-            ]
-        });
-        page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-        
-        // Bypass Cloudflare on base site first
-        console.log("Navigating to Base Domain to bypass Cloudflare...");
-        await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        isInitialized = true;
-    }
-}
-
 async function fetchWinGoData() {
     try {
-        if (!isInitialized) {
-            await initBrowser();
-        }
+        const response = await axios.get(TARGET_URL, { timeout: 25000 });
+        let parsedData = response.data;
 
-        // Fetch via in-page fetch using existing browser context & cookies
-        let parsedData = await page.evaluate(async (url) => {
-            try {
-                let res = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json, text/plain, */*'
-                    }
-                });
-                return await res.json();
-            } catch (e) {
-                return null;
+        if (typeof parsedData === 'string') {
+            const jsonMatch = parsedData.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                parsedData = JSON.parse(jsonMatch[0]);
             }
-        }, TARGET_URL);
-
-        if (!parsedData) {
-            console.log("Fetch failed or Cloudflare block active, refreshing page...");
-            await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
-            return;
         }
 
         let list = parsedData?.data?.list || parsedData?.list || (Array.isArray(parsedData) ? parsedData : null);
@@ -319,18 +278,13 @@ async function fetchWinGoData() {
         }
     } catch (error) {
         console.error('[API FETCH ERROR]:', error.message);
-        if (browser) {
-            await browser.close().catch(() => {});
-            browser = null;
-            isInitialized = false;
-        }
     }
 }
 
 async function startContinuousLoop() {
     while (true) {
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 5000));
     }
 }
 
