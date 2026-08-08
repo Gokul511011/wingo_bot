@@ -41,7 +41,6 @@ let totalProfitLoss = 0;
 
 let predictionCount = 0;
 let maxLevelReached = 1;
-let prediction60History = [];
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
@@ -210,7 +209,6 @@ async function fetchWinGoData() {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
                 }
 
-                prediction60History.push({ index: predictionCount, period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1; 
 
             } else {
@@ -219,7 +217,6 @@ async function fetchWinGoData() {
 
                 dynamicStatusMsg = "💔 **LOSS: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
 
-                prediction60History.push({ index: predictionCount, period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 maintenanceLevel++; 
             }
 
@@ -245,14 +242,7 @@ async function fetchWinGoData() {
                                  "🔹 LEVEL 7 (₹450): " + levelWins[7] + " WINS\n" +
                                  "🔹 LEVEL 8 (₹1350): " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "📋 **FULL 1 TO 60 BATCH HISTORY DATA:**\n";
-
-                prediction60History.forEach(item => {
-                    let icon = item.status === "WIN" ? "✅" : "❌";
-                    summaryMsg += `${item.index}. ${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
-                });
-
-                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
@@ -262,7 +252,6 @@ async function fetchWinGoData() {
                 totalJackpots = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
-                prediction60History = [];
                 levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
@@ -292,6 +281,11 @@ async function fetchWinGoData() {
             msg += "🔢 **PROGRESS:** " + predictionCount + " / 60\n" +
                    "🏆 **B/S WINS:** " + totalWins + " | 💥 **JACKPOTS:** " + totalJackpots + " | 💔 **LOSSES:** " + totalLosses + "\n" +
                    "📊 **TOTAL PROFIT / LOSS:** **" + profitSign + "**\n" +
+                   "━━━━━━━━━━━━━━━━━━━━━\n" +
+                   "🎯 **LIVE LEVEL-WISE WINS:**\n" +
+                   "🔹 L1: " + levelWins[1] + " | 🔹 L2: " + levelWins[2] + " | 🔹 L3: " + levelWins[3] + "\n" +
+                   "🔹 L4: " + levelWins[4] + " | 🔹 L5: " + levelWins[5] + " | 🔹 L6: " + levelWins[6] + "\n" +
+                   "🔹 L7: " + levelWins[7] + " | 🔹 L8: " + levelWins[8] + "\n" +
                    "━━━━━━━━━━━━━━━━━━━━━\n\n" +
                    "🔗 **Register Link:**\n" + REGISTER_LINK;
 
