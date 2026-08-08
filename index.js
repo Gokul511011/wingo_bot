@@ -210,7 +210,7 @@ async function fetchWinGoData() {
                     dynamicStatusMsg = "🏆 **" + actualResult + " (" + actualNum + ") WIN** 🏆";
                 }
 
-                prediction60History.unshift({ period: actualPeriod, status: "WIN", level: currentLevelExecuted });
+                prediction60History.push({ index: predictionCount, period: actualPeriod, status: "WIN", level: currentLevelExecuted });
                 maintenanceLevel = 1; 
 
             } else {
@@ -219,7 +219,7 @@ async function fetchWinGoData() {
 
                 dynamicStatusMsg = "💔 **LOSS: " + actualResult + " (" + actualNum + " - " + actualColor + ")**";
 
-                prediction60History.unshift({ period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
+                prediction60History.push({ index: predictionCount, period: actualPeriod, status: "LOSS", level: currentLevelExecuted });
                 maintenanceLevel++; 
             }
 
@@ -245,7 +245,14 @@ async function fetchWinGoData() {
                                  "🔹 LEVEL 7 (₹450): " + levelWins[7] + " WINS\n" +
                                  "🔹 LEVEL 8 (₹1350): " + levelWins[8] + " WINS\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                                 "📋 **FULL 1 TO 60 BATCH HISTORY DATA:**\n";
+
+                prediction60History.forEach(item => {
+                    let icon = item.status === "WIN" ? "✅" : "❌";
+                    summaryMsg += `${item.index}. ${icon} Period: \`${item.period}\` - ${item.status} (Level ${item.level})\n`;
+                });
+
+                summaryMsg += "━━━━━━━━━━━━━━━━━━━━━\n🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(CHANNEL_ID, summaryMsg, { parse_mode: 'Markdown' });
 
