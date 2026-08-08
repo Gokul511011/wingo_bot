@@ -130,25 +130,31 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Attempt 1: Direct Request with Dynamic Mobile Headers
+        // Route 1: ScrapingAnt Proxy (High Priority)
         try {
-            const directRes = await axios.get(TARGET_URL, {
-                timeout: 3000,
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-                    'Accept': 'application/json, text/plain, */*',
-                    'Origin': 'https://www.rajastake7.com',
-                    'Referer': 'https://www.rajastake7.com/'
-                }
-            });
-            rawContent = directRes.data;
-        } catch (err) {
-            // Attempt 2: ScrapingAnt Proxy Route
+            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
+            const response = await axios.get(scraperUrl, { timeout: 6000 });
+            rawContent = response.data;
+        } catch (e) {
+            // Route 2: Direct Request with Headers
             try {
-                const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser=false`;
-                const response = await axios.get(scraperUrl, { timeout: 4000 });
-                rawContent = response.data;
-            } catch (e) {}
+                const directRes = await axios.get(TARGET_URL, {
+                    timeout: 4000,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                        'Accept': '*/*',
+                        'Referer': 'https://www.rajastake7.com/'
+                    }
+                });
+                rawContent = directRes.data;
+            } catch (err) {
+                // Route 3: Public Proxy Backup
+                try {
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_URL)}`;
+                    const proxyRes = await axios.get(proxyUrl, { timeout: 4000 });
+                    rawContent = proxyRes.data?.contents;
+                } catch (pErr) {}
+            }
         }
 
         if (typeof rawContent === 'string') {
@@ -158,12 +164,12 @@ async function fetchWinGoData() {
         let list = rawContent?.data?.list || rawContent?.list || (Array.isArray(rawContent) ? rawContent : null);
 
         if (!list || !Array.isArray(list) || list.length === 0) {
-            console.log("API response blocked or empty. Retrying...");
+            console.log("Fetching retrying... Data empty or blocked.");
             isFetching = false;
             return;
         }
 
-        console.log("Successfully fetched data! Total items:", list.length);
+        console.log("Successfully fetched " + list.length + " items!");
 
         let lastItem = list[0];
         let actualNum = parseInt(lastItem.number !== undefined ? lastItem.number : lastItem.result);
@@ -309,4 +315,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 2500);
+setInterval(fetchWinGoData, 3000);
