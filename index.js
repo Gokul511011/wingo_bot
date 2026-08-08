@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 10000;
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
 
+// Your New ScrapingAnt API Key
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -127,10 +128,10 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // ScrapingAnt call with x-api-key in URL as standard fallback
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
+        // Using standard API key endpoint URL parameter
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=false`;
         
-        const response = await axios.get(scraperUrl, { timeout: 25000 });
+        const response = await axios.get(scraperUrl, { timeout: 30000 });
         rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
@@ -286,10 +287,12 @@ async function fetchWinGoData() {
 }
 
 async function runLoop() {
+    // Initial 10 seconds delay on server start to clear any old requests
+    await new Promise(resolve => setTimeout(resolve, 10000));
     while (true) {
-        // Sequentially fetch data and wait 12 seconds to respect ScrapingAnt 1-concurrency limit
         await fetchWinGoData();
-        await new Promise(resolve => setTimeout(resolve, 12000));
+        // Safe 10 seconds interval between requests
+        await new Promise(resolve => setTimeout(resolve, 10000));
     }
 }
 
