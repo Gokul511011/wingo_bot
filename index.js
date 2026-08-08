@@ -9,7 +9,7 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
 
-const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
+const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -55,7 +55,6 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// 500 ஹிஸ்ட்ரியை ஸ்கேன் செய்து ஸ்ட்ரிக்ட் 2 நம்பர்களை மட்டும் ஃபில்டர் செய்யும் என்ஜின்
 function deepHistoryPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -63,35 +62,43 @@ function deepHistoryPatternEngine(history) {
 
         let r1 = allResults[0];
         let r2 = allResults[1];
-        let predResult = (r1 === r2) ? r1 : (r1 === "BIG" ? "SMALL" : "BIG");
+        let r3 = allResults[2];
+        let r4 = allResults[3];
 
-        // BIG என்றால் 5-9 எண்கள், SMALL என்றால் 0-4 எண்கள் மட்டுமே பூலில் இருக்க வேண்டும்
-        let validPool = predResult === "BIG" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4];
+        let predResult = "";
+        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            predResult = r1 === "BIG" ? "SMALL" : "BIG"; 
+        } else if (r1 === r2) {
+            predResult = r1; 
+        } else {
+            predResult = r1;
+        }
 
-        // ஹிஸ்ட்ரியில் எந்தெந்த எண்கள் அதிக முறை வந்துள்ளன என்று கவுண்ட் செய்து ஃபில்டர் செய்கிறது
-        let counts = {};
-        validPool.forEach(n => counts[n] = 0);
-        history.forEach(item => {
-            let num = parseInt(item.number ?? item.result);
-            if (validPool.includes(num)) {
-                counts[num]++;
-            }
-        });
+        const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
+        let matchedNumbers = [];
 
-        // அதிக முறை வந்த முதல் 2 எண்களை மட்டும் தேர்ந்தெடுக்கிறது
-        let sortedNums = validPool.sort((a, b) => counts[b] - counts[a]);
-        let targetNumbers = [sortedNums[0], sortedNums[1]];
+        if (predResult === "BIG") {
+            if ([5, 0].includes(lastNum)) matchedNumbers = [6, 8];
+            else if ([6, 1].includes(lastNum)) matchedNumbers = [7, 9];
+            else if ([7, 2].includes(lastNum)) matchedNumbers = [5, 8];
+            else if ([8, 3].includes(lastNum)) matchedNumbers = [6, 9];
+            else matchedNumbers = [7, 8];
+        } else {
+            if ([0, 5].includes(lastNum)) matchedNumbers = [1, 3];
+            else if ([1, 6].includes(lastNum)) matchedNumbers = [0, 2];
+            else if ([2, 7].includes(lastNum)) matchedNumbers = [1, 4];
+            else if ([3, 8].includes(lastNum)) matchedNumbers = [0, 3];
+            else matchedNumbers = [1, 2];
+        }
 
-        let numbersStr = targetNumbers.join(", ");
-        let colorStr = targetNumbers.includes(0) ? "🔴 RED / 🟣 VIOLET" : 
-                       targetNumbers.includes(5) ? "🟢 GREEN / 🟣 VIOLET" : 
-                       predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+        let numbersStr = matchedNumbers.join(", ");
+        let colorStr = predResult === "BIG" ? "🟢 GREEN" : "🔴 RED";
+        if (matchedNumbers.includes(0)) colorStr = "🔴 RED / 🟣 VIOLET";
+        else if (matchedNumbers.includes(5)) colorStr = "🟢 GREEN / 🟣 VIOLET";
 
-        return { predResult, targetNumbers, numbersStr, colorStr };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr };
     } catch (e) {
-        let predResult = "BIG";
-        let targetNumbers = [6, 8];
-        return { predResult, targetNumbers, numbersStr: "6, 8", colorStr: "🟢 GREEN" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN" };
     }
 }
 
@@ -166,7 +173,8 @@ async function fetchWinGoData() {
                                  "🔹 LEVEL 6: " + levelWins[6] + " WINS\n" +
                                  "🔹 LEVEL 7: " + levelWins[7] + " WINS\n" +
                                  "🔹 LEVEL 8: " + levelWins[8] + " WINS\n" +
-                                 "━━━━━━━━━━━━━━━━━━━━━";
+                                 "━━━━━━━━━━━━━━━━━━━━━\n" +
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
 
                 await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
