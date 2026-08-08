@@ -123,25 +123,14 @@ function deepHistoryPatternEngine(history) {
     }
 }
 
-// Lock variable to avoid 409 Concurrency Error in ScrapingAnt
-let isFetching = false;
-
 async function fetchWinGoData() {
-    if (isFetching) return;
-    isFetching = true;
-
     try {
         let rawContent = null;
 
-        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&browser_scraper=true`;
+        // ScrapingAnt call with x-api-key in URL as standard fallback
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
         
-        const response = await axios.get(scraperUrl, {
-            headers: {
-                'x-api-key': SCRAPINGANT_API_KEY
-            },
-            timeout: 25000
-        });
-
+        const response = await axios.get(scraperUrl, { timeout: 25000 });
         rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
@@ -293,16 +282,14 @@ async function fetchWinGoData() {
         }
     } catch (error) {
         console.error('[FETCH ERROR]:', error.message);
-    } finally {
-        isFetching = false;
     }
 }
 
 async function runLoop() {
     while (true) {
+        // Sequentially fetch data and wait 12 seconds to respect ScrapingAnt 1-concurrency limit
         await fetchWinGoData();
-        // Wait 5 seconds after each completion before triggering again
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 12000));
     }
 }
 
