@@ -9,7 +9,8 @@ const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
 
-const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=2000&pageNo=1';
+// 500 History check kkupageSize 500 nu fix panliyachu
+const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
 const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
@@ -28,6 +29,7 @@ let maintenanceLevel = 1;
 let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
+let consecutiveLosses = 0; // Track consecutive losses to detect pattern break
 
 let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
@@ -55,54 +57,43 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Fully Dynamic Pattern & Real Number Frequency Engine
-function realTimeDynamicNumberEngine(history) {
+// Normal Trend & 500 History Smart Number Engine with Break Detection
+function normalTrendAndNumberEngine(history, consecutiveLossesCount) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        if (allResults.length < 15) {
-            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", detectedPatternName: "Standard Start" };
+        if (allResults.length < 10) {
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", statusText: "Normal Trend" };
         }
 
         let r1 = allResults[0];
         let r2 = allResults[1];
         let r3 = allResults[2];
-        let r4 = allResults[3];
 
         let predResult = "BIG";
-        let detectedPatternName = "Trend Follow";
+        let statusText = "Normal Follow Trend";
 
-        // 1. Zig-Zag Detection
-        if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            detectedPatternName = "Zig-Zag Pattern";
+        // If 2 consecutive losses occur, pattern is broken -> Reverse/Adapt strategy
+        if (consecutiveLossesCount >= 2) {
+            statusText = "Pattern Broken (Reversed)";
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-        }
-        // 2. Double Pattern Detection
-        else if (r1 === r2 && r3 === r4 && r2 !== r3) {
-            detectedPatternName = "Double Pattern";
-            predResult = r1; 
-        }
-        // 3. Dragon / Long Streak Detection & Reversal
-        else if (r1 === r2 && r2 === r3) {
-            if (r1 === r2 && r2 === r3 && r3 === r4) {
-                detectedPatternName = "Dragon Break (Reversal)";
-                predResult = (r1 === "BIG") ? "SMALL" : "BIG";
+        } else {
+            // Standard Normal Trend (Big if last is big, small if last is small, with basic alternation check)
+            if (r1 === r2 && r2 === r3) {
+                predResult = r1; // Continue streak normally
+                statusText = "Streak Trend";
             } else {
-                detectedPatternName = "Dragon / Triple Streak";
-                predResult = r1;
+                predResult = r1; // Normal direct follow
+                statusText = "Direct Trend";
             }
-        }
-        else {
-            detectedPatternName = "Dynamic Direct Flow";
-            predResult = r1;
         }
 
         const lastNum = allNumbers[0] !== undefined ? allNumbers[0] : 5;
         
-        // Deep 2000 History Frequency Scan for Exact Numbers based on last number transition
+        // Scan up to 500 history for precise number transition frequency
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
-        let scanLimit = Math.min(history.length - 1, 2000);
+        let scanLimit = Math.min(history.length - 1, 500);
 
         for (let i = 0; i < scanLimit; i++) {
             let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
@@ -112,7 +103,6 @@ function realTimeDynamicNumberEngine(history) {
             }
         }
 
-        // Group numbers based on Big/Small prediction
         let candidateNumbers = [];
         for (let n = 0; n <= 9; n++) {
             let isBig = n >= 5;
@@ -121,15 +111,14 @@ function realTimeDynamicNumberEngine(history) {
             }
         }
 
-        // Sort dynamically by historical transition count
+        // Sort by frequency to get top 2 precise numbers based on 500 history
         candidateNumbers.sort((a, b) => b.count - a.count);
 
         let matchedNumbers = [];
         if (candidateNumbers.length >= 2) {
-            // Pick top 2 most frequent numbers from history dynamically
             matchedNumbers = [candidateNumbers[0].num, candidateNumbers[1].num];
         } else {
-            matchedNumbers = predResult === "BIG" ? [7, 9] : [2, 4];
+            matchedNumbers = predResult === "BIG" ? [6, 8] : [1, 3];
         }
 
         matchedNumbers.sort((a, b) => a - b);
@@ -142,13 +131,13 @@ function realTimeDynamicNumberEngine(history) {
             colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, detectedPatternName };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, statusText };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [7, 9], numbersStr: "7, 9", colorStr: "🟢 GREEN", detectedPatternName: "Dynamic Fallback" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", statusText: "Fallback" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S Real-Time Dynamic Number Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo 30S Normal Trend & 500 History Number Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -190,6 +179,7 @@ async function fetchWinGoData() {
 
             if (isResultHit) {
                 totalWins++;
+                consecutiveLosses = 0; // Reset loss count on win
                 if (levelWins[maintenanceLevel] !== undefined) levelWins[maintenanceLevel]++;
                 else levelWins[maintenanceLevel] = 1;
 
@@ -205,11 +195,13 @@ async function fetchWinGoData() {
                 maintenanceLevel = 1; 
             } else {
                 totalLosses++;
+                consecutiveLosses++; // Increment consecutive loss
                 totalProfitLoss -= currentBetVal;
                 
                 if (maintenanceLevel >= 8) {
                     dynamicStatusMsg = `💔 **LOSS AT LEVEL 8: ${actualResult} (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
                     maintenanceLevel = 1;
+                    consecutiveLosses = 0;
                 } else {
                     maintenanceLevel++;
                     dynamicStatusMsg = `💔 **LOSS: ${actualResult} (${actualNum} - ${actualColor})**\n➡️ **NEXT LEVEL (LEVEL ${maintenanceLevel})**`;
@@ -218,7 +210,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **DYNAMIC NUMBER MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **NORMAL TREND & NUMBER MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -239,18 +231,19 @@ async function fetchWinGoData() {
                 totalJackpots = 0;
                 totalProfitLoss = 0;
                 maxLevelReached = 1;
+                consecutiveLosses = 0;
                 levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
             }
         }
 
-        let pred = realTimeDynamicNumberEngine(list);
+        let pred = normalTrendAndNumberEngine(list, consecutiveLosses);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S DYNAMIC PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S NORMAL PREDICTION** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                  "🧩 **PATTERN:** `" + pred.detectedPatternName + "`\n" +
+                  "🧩 **STATUS:** `" + pred.statusText + "`\n" +
                   "🎲 **BET:** **" + pred.predResult + "**\n" +
                   "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                   "🎨 **COLOUR:** " + pred.colorStr + "\n" +
@@ -295,6 +288,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Dynamic Number Engine Bot Active on port " + PORT); 
+    console.log("Normal Trend & Number Engine Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
