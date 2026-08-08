@@ -7,6 +7,8 @@ const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = '8950819463:AAGrZXE-tL39JbvBP9wkc9fDzRFsTxxWYUU';
 const CHANNEL_ID = '-1002486828817';
+
+// Updated API Key
 const SCRAPINGANT_API_KEY = 'ffbc3803db954886adfaba6ac22b4b2a'; 
 
 const TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=1000&pageNo=1';
@@ -130,26 +132,10 @@ async function fetchWinGoData() {
     try {
         let rawContent = null;
 
-        // Method 1: ScrapingAnt with Residential Proxy parameter
-        try {
-            const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&proxy_type=residential`;
-            const response = await axios.get(scraperUrl, { timeout: 15000 });
-            rawContent = response?.data;
-        } catch (e1) {
-            // Method 2: Fallback via CodeTabs CORS Proxy
-            try {
-                const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(TARGET_URL)}`;
-                const response = await axios.get(proxyUrl, { timeout: 10000 });
-                rawContent = response?.data;
-            } catch (e2) {
-                // Method 3: Fallback via CorsProxy
-                try {
-                    const proxyUrl2 = `https://corsproxy.io/?${encodeURIComponent(TARGET_URL)}`;
-                    const response = await axios.get(proxyUrl2, { timeout: 10000 });
-                    rawContent = response?.data;
-                } catch (e3) {}
-            }
-        }
+        // ScrapingAnt Browser Scraper URL Format
+        const scraperUrl = `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&browser_scraper=true`;
+        const response = await axios.get(scraperUrl, { timeout: 15000 });
+        rawContent = response?.data;
 
         if (typeof rawContent === 'string') {
             try { rawContent = JSON.parse(rawContent); } catch (e) {}
@@ -308,4 +294,4 @@ async function fetchWinGoData() {
 process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err));
 process.on('unhandledRejection', (reason, promise) => console.error('Unhandled Rejection:', reason));
 
-setInterval(fetchWinGoData, 6000);
+setInterval(fetchWinGoData, 5000);
