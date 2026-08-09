@@ -56,43 +56,66 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// RNG History-Based Trend & Number Engine (Original Logic Intact)
-function rngHistoryEngine(history) {
+// Advanced Multi-Pattern Detection Engine (Dragon, Double, Zig-Zag, Mirror, Opposite)
+function multiPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
         if (allResults.length < 10) {
-            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", trendInfo: "RNG Initial Scan" };
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Initial Scan" };
         }
 
-        let r1 = allResults[0];
+        let r1 = allResults[0]; // Recent
         let r2 = allResults[1];
         let r3 = allResults[2];
+        let r4 = allResults[3];
 
         let predResult = "BIG";
-        let trendInfo = "RNG Trend Follow";
+        let patternName = "Standard Trend";
 
-        let streak = 1;
+        // 1. Dragon Pattern Check (Streak of 3 or more same results)
+        let dragonCount = 1;
         for (let i = 1; i < allResults.length; i++) {
-            if (allResults[i] === r1) streak++;
+            if (allResults[i] === r1) dragonCount++;
             else break;
         }
 
-        if (streak >= 3) {
+        if (dragonCount >= 3) {
+            // Dragon usually continues or breaks. Let's adapt based on dragon length.
+            if (dragonCount >= 5) {
+                predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Break dragon if too long
+                patternName = `🐉 Dragon Break (${dragonCount}x Streak)`;
+            } else {
+                predResult = r1; // Follow dragon
+                patternName = `🐉 Dragon Pattern (${dragonCount}x Streak)`;
+            }
+        } 
+        // 2. Double Pattern Check (e.g., BIG, BIG, SMALL, SMALL)
+        else if (r1 === r2 && r3 === r4 && r1 !== r3) {
+            predResult = r1; // Continue the double block
+            patternName = "👥 Double Pattern Flow";
+        }
+        // 3. Zig-Zag Pattern Check (e.g., BIG, SMALL, BIG, SMALL)
+        else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Reverse for strict zig-zag
+            patternName = "⚡ Zig-Zag Pattern";
+        }
+        // 4. Mirror Pattern Check (Symmetrical check)
+        else if (allResults[0] === allResults[3] && allResults[1] === allResults[2] && allResults[0] !== allResults[1]) {
+            predResult = allResults[1]; // Mirror reflection flip
+            patternName = "🪞 Mirror Pattern";
+        }
+        // 5. Opposite Pattern Check
+        else {
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-            trendInfo = `RNG Streak Break (${streak}x) -> Switch`;
-        } else if (r1 !== r2 && r2 !== r3) {
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-            trendInfo = "RNG Zig-Zag Switch";
-        } else {
-            predResult = r1;
-            trendInfo = "RNG Direct Flow";
+            patternName = "🔄 Opposite Trend Shift";
         }
 
+        // Number selection based on predicted result and history frequency
         const lastNum = allNumbers[0];
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
-        let scanLimit = Math.min(history.length - 1, 500);
+        let scanLimit = Math.min(history.length - 1, 300);
 
         for (let i = 0; i < scanLimit; i++) {
             let currN = parseInt(history[i].number !== undefined ? history[i].number : history[i].result);
@@ -129,20 +152,18 @@ function rngHistoryEngine(history) {
             colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
-        // Hidden tracking check for specific patterns like After [7] -> [0, 6] or After [6] -> [0, 1]
+        // Hidden specific pattern overrides (e.g., After [7] -> [0, 6])
         if (lastNum === 7 && matchedNumbers.includes(0) && matchedNumbers.includes(6)) {
-            trendInfo = "After [7] -> [0, 6] Lead";
-        } else if (lastNum === 6 && matchedNumbers.includes(0) && matchedNumbers.includes(1)) {
-            trendInfo = "After [6] -> [0, 1] Lead";
+            patternName = "🎯 Special Lead: After [7] -> [0, 6]";
         }
 
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, trendInfo };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", trendInfo: "RNG Fallback" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Fallback Trend" };
     }
 }
 
-app.get('/', (req, res) => res.send('WinGo 30S RNG History Engine Active!'));
+app.get('/', (req, res) => res.send('Multi-Pattern Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -215,7 +236,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **RNG HISTORY MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **MULTI-PATTERN MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -225,7 +246,7 @@ async function fetchWinGoData() {
                                  "📈 **MAX LEVEL REACHED:** Level " + maxLevelReached + "\n" +
                                  "💰 **TOTAL PROFIT:** **" + profitSign + "**\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
-                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds non-stop!**";
+                                 "🔄 **Batch completed! Resetting stats for the next 60 rounds!**";
 
                 await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
                 await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
@@ -241,13 +262,14 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = rngHistoryEngine(list);
+        let pred = multiPatternEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S RNG PREDICTION** 🔥\n" +
+        let msg = "🔥 **WINGO 30S PATTERN ENGINE** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
+                  "🔍 **PATTERN:** `" + pred.patternName + "`\n" +
                   "🎲 **BET:** **" + pred.predResult + "**\n" +
                   "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                   "🎨 **COLOUR:** " + pred.colorStr + "\n" +
@@ -292,6 +314,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("RNG History Engine Bot Active on port " + PORT); 
+    console.log("Multi-Pattern Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
