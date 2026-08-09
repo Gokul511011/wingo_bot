@@ -10,8 +10,11 @@ const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
-const SCRAPINGANT_API_KEY = 'd717a6d4020b465aac8d0eed35459624'; 
+
+// New API Token integrated (1 Request = 1 Credit Optimization)
+const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
+
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
@@ -56,7 +59,7 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Advanced Multi-Pattern Detection Engine (Dragon, Double, Zig-Zag, Mirror, Opposite)
+// Multi-Pattern Detection Engine (Dragon, Double, Zig-Zag, Mirror, Opposite)
 function multiPatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
@@ -66,7 +69,7 @@ function multiPatternEngine(history) {
             return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Initial Scan" };
         }
 
-        let r1 = allResults[0]; // Recent
+        let r1 = allResults[0]; 
         let r2 = allResults[1];
         let r3 = allResults[2];
         let r4 = allResults[3];
@@ -74,7 +77,6 @@ function multiPatternEngine(history) {
         let predResult = "BIG";
         let patternName = "Standard Trend";
 
-        // 1. Dragon Pattern Check (Streak of 3 or more same results)
         let dragonCount = 1;
         for (let i = 1; i < allResults.length; i++) {
             if (allResults[i] === r1) dragonCount++;
@@ -82,37 +84,31 @@ function multiPatternEngine(history) {
         }
 
         if (dragonCount >= 3) {
-            // Dragon usually continues or breaks. Let's adapt based on dragon length.
             if (dragonCount >= 5) {
-                predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Break dragon if too long
+                predResult = (r1 === "BIG") ? "SMALL" : "BIG";
                 patternName = `🐉 Dragon Break (${dragonCount}x Streak)`;
             } else {
-                predResult = r1; // Follow dragon
+                predResult = r1;
                 patternName = `🐉 Dragon Pattern (${dragonCount}x Streak)`;
             }
         } 
-        // 2. Double Pattern Check (e.g., BIG, BIG, SMALL, SMALL)
         else if (r1 === r2 && r3 === r4 && r1 !== r3) {
-            predResult = r1; // Continue the double block
+            predResult = r1;
             patternName = "👥 Double Pattern Flow";
         }
-        // 3. Zig-Zag Pattern Check (e.g., BIG, SMALL, BIG, SMALL)
         else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG"; // Reverse for strict zig-zag
+            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             patternName = "⚡ Zig-Zag Pattern";
         }
-        // 4. Mirror Pattern Check (Symmetrical check)
         else if (allResults[0] === allResults[3] && allResults[1] === allResults[2] && allResults[0] !== allResults[1]) {
-            predResult = allResults[1]; // Mirror reflection flip
+            predResult = allResults[1];
             patternName = "🪞 Mirror Pattern";
         }
-        // 5. Opposite Pattern Check
         else {
             predResult = (r1 === "BIG") ? "SMALL" : "BIG";
             patternName = "🔄 Opposite Trend Shift";
         }
 
-        // Number selection based on predicted result and history frequency
         const lastNum = allNumbers[0];
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 300);
@@ -152,7 +148,6 @@ function multiPatternEngine(history) {
             colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
-        // Hidden specific pattern overrides (e.g., After [7] -> [0, 6])
         if (lastNum === 7 && matchedNumbers.includes(0) && matchedNumbers.includes(6)) {
             patternName = "🎯 Special Lead: After [7] -> [0, 6]";
         }
@@ -163,7 +158,7 @@ function multiPatternEngine(history) {
     }
 }
 
-app.get('/', (req, res) => res.send('Multi-Pattern Engine Active!'));
+app.get('/', (req, res) => res.send('API Token Optimized Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -236,7 +231,7 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **MULTI-PATTERN MASTER** 👑\n\n" +
+                let summaryMsg = "👑 **API OPTIMIZED MASTER** 👑\n\n" +
                                  "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
@@ -314,6 +309,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("Multi-Pattern Bot Active on port " + PORT); 
+    console.log("API Token Optimized Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
