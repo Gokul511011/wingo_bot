@@ -5,23 +5,14 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Environment Variables
-const BOT_TOKEN = process.env.BOT_TOKEN;
+// Direct Configuration (No Render Environment Variables needed)
+const BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
+const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33';
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
 
 const RAW_TARGET_URL =
     'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
-
-const SCRAPINGANT_API_KEY = process.env.SCRAPINGANT_API_KEY;
-
-if (!BOT_TOKEN) {
-    throw new Error('BOT_TOKEN environment variable is required');
-}
-
-if (!SCRAPINGANT_API_KEY) {
-    throw new Error('SCRAPINGANT_API_KEY environment variable is required');
-}
 
 const SCRAPINGANT_URL =
     `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}` +
@@ -107,7 +98,6 @@ function masterGuidePatternEngine(history) {
         let predResult = "BIG";
         let patternName = "Standard Trend";
 
-        // 1. LONG TREND
         let streak = 1;
         for (let i = 1; i < r.length; i++) {
             if (r[i] === r[0]) {
@@ -120,34 +110,23 @@ function masterGuidePatternEngine(history) {
         if (streak >= 5) {
             predResult = r[0] === "BIG" ? "SMALL" : "BIG";
             patternName = `Long Trend Break (${streak}x)`;
-        }
-        // 2. TRIPLE / QUADRA TREND
-        else if (streak >= 3) {
+        } else if (streak >= 3) {
             predResult = r[0];
             patternName = `Quadra/Triple Trend (${streak}x Streak)`;
-        }
-        // 3. DOUBLE TREND
-        else if (r[0] === r[1] && r[2] === r[3] && r[0] !== r[2]) {
+        } else if (r[0] === r[1] && r[2] === r[3] && r[0] !== r[2]) {
             predResult = r[2] === "BIG" ? "BIG" : "SMALL";
             patternName = "Double Trend Flow";
-        }
-        // 4. ZIG ZAG
-        else if (r[0] !== r[1] && r[1] !== r[2] && r[2] !== r[3] && r[3] !== r[4]) {
+        } else if (r[0] !== r[1] && r[1] !== r[2] && r[2] !== r[3] && r[3] !== r[4]) {
             predResult = r[0] === "BIG" ? "SMALL" : "BIG";
             patternName = "Zig-Zag / Single Trend";
-        }
-        // 5. CORRECTION
-        else if (r[0] === r[1] && r[1] !== r[2] && r[2] === r[3]) {
+        } else if (r[0] === r[1] && r[1] !== r[2] && r[2] === r[3]) {
             predResult = r[2] === "BIG" ? "SMALL" : "BIG";
             patternName = "Correction Phase";
-        }
-        // 6. DEFAULT
-        else {
+        } else {
             predResult = r[0] === "BIG" ? "SMALL" : "BIG";
             patternName = "Active Shifting Trend";
         }
 
-        // NUMBER FREQUENCY
         const lastNum = allNumbers[0];
         let numFrequency = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
         let scanLimit = Math.min(history.length - 1, 300);
@@ -352,7 +331,7 @@ async function fetchWinGoData() {
         lastPredictedResult = pred.predResult;
         lastPredictedNumbers = pred.targetNumbers;
 
-    } catch (e) {
+    }чити (e) {
         console.error("Error:", e.message);
     }
 }
