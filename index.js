@@ -11,7 +11,7 @@ const REPORT_CHANNEL = '-1003345976502';
 
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
 
-// New API Token integrated (1 Request = 1 Credit Optimization)
+// Updated API Token (1 Request = 1 Credit Optimized)
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33'; 
 const SCRAPINGANT_URL = `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}&url=${encodeURIComponent(RAW_TARGET_URL)}&proxy_country=in&browser=false`;
 
@@ -59,56 +59,61 @@ function getNumberColor(num) {
     return "RED";
 }
 
-// Multi-Pattern Detection Engine (Dragon, Double, Zig-Zag, Mirror, Opposite)
-function multiPatternEngine(history) {
+// Master Guide Pattern Engine (Based on Big_Small_Patterns_Master_Guide.xlsx)
+function masterGuidePatternEngine(history) {
     try {
         let allNumbers = history.map(x => parseInt(x.number !== undefined ? x.number : x.result));
         let allResults = allNumbers.map(n => n >= 5 ? "BIG" : "SMALL");
 
-        if (allResults.length < 10) {
-            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Initial Scan" };
+        if (allResults.length < 15) {
+            return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Initial Stable Scan" };
         }
 
-        let r1 = allResults[0]; 
-        let r2 = allResults[1];
-        let r3 = allResults[2];
-        let r4 = allResults[3];
-
+        let r = allResults; // r[0] is latest, r[1], r[2]...
         let predResult = "BIG";
         let patternName = "Standard Trend";
 
-        let dragonCount = 1;
-        for (let i = 1; i < allResults.length; i++) {
-            if (allResults[i] === r1) dragonCount++;
+        // 1. Long Trend Check (Long Big / Long Small Trend - 5+ consecutive)
+        let streak = 1;
+        for (let i = 1; i < r.length; i++) {
+            if (r[i] === r[0]) streak++;
             else break;
         }
 
-        if (dragonCount >= 3) {
-            if (dragonCount >= 5) {
-                predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-                patternName = `🐉 Dragon Break (${dragonCount}x Streak)`;
-            } else {
-                predResult = r1;
-                patternName = `🐉 Dragon Pattern (${dragonCount}x Streak)`;
-            }
+        if (streak >= 5) {
+            // As per guide, long trends break at 4th-6th turn -> Reverse it
+            predResult = (r[0] === "BIG") ? "SMALL" : "BIG";
+            patternName = `🚀 Long ${r[0]} Trend Break (${streak}x)`;
         } 
-        else if (r1 === r2 && r3 === r4 && r1 !== r3) {
-            predResult = r1;
-            patternName = "👥 Double Pattern Flow";
+        else if (streak >= 3) {
+            // Triple or Quadra Trend phase
+            predResult = r[0];
+            patternName = `⚡ Quadra/Triple Trend (${streak}x Streak)`;
         }
-        else if (r1 !== r2 && r2 !== r3 && r3 !== r4) {
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-            patternName = "⚡ Zig-Zag Pattern";
+        // 2. Double Trend Check (B, B, S, S or S, S, B, B)
+        else if (r[0] === r[1] && r[2] === r[3] && r[0] !== r[2]) {
+            // Following the double sequence cycle
+            predResult = (r[2] === "BIG") ? "BIG" : "SMALL"; 
+            patternName = "👥 Double Trend Flow";
         }
-        else if (allResults[0] === allResults[3] && allResults[1] === allResults[2] && allResults[0] !== allResults[1]) {
-            predResult = allResults[1];
-            patternName = "🪞 Mirror Pattern";
+        // 3. Zig-Zag / Single Trend Check (B, S, B, S, B, S)
+        else if (r[0] !== r[1] && r[1] !== r[2] && r[2] !== r[3] && r[3] !== r[4]) {
+            // Zig-Zag alternates
+            predResult = (r[0] === "BIG") ? "SMALL" : "BIG";
+            patternName = "🔄 Zig-Zag / Single Trend";
         }
+        // 4. 2-in-1 or 3-in-1 Small Corrections Check
+        else if (r[0] === r[1] && r[1] !== r[2] && r[2] === r[3]) {
+            predResult = (r[2] === "BIG") ? "SMALL" : "BIG";
+            patternName = "⚖️ 2-in-1 / 3-in-1 Correction Phase";
+        }
+        // 5. Default / Mixed Phase Fallback
         else {
-            predResult = (r1 === "BIG") ? "SMALL" : "BIG";
-            patternName = "🔄 Opposite Trend Shift";
+            predResult = (r[0] === "BIG") ? "SMALL" : "BIG";
+            patternName = "📊 Mixed / Active Shifting Trend";
         }
 
+        // Number Frequency Matching based on Master Guide and History
         const lastNum = allNumbers[0];
         let numFrequency = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0};
         let scanLimit = Math.min(history.length - 1, 300);
@@ -148,17 +153,18 @@ function multiPatternEngine(history) {
             colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
         }
 
+        // Special Guide Rule Override (e.g., After [7] -> [0, 6])
         if (lastNum === 7 && matchedNumbers.includes(0) && matchedNumbers.includes(6)) {
-            patternName = "🎯 Special Lead: After [7] -> [0, 6]";
+            patternName = "🎯 Guide Rule: After [7] -> [0, 6]";
         }
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName };
     } catch (e) {
-        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Fallback Trend" };
+        return { predResult: "BIG", targetNumbers: [6, 8], numbersStr: "6, 8", colorStr: "🟢 GREEN", patternName: "Guide Fallback" };
     }
 }
 
-app.get('/', (req, res) => res.send('API Token Optimized Engine Active!'));
+app.get('/', (req, res) => res.send('Master Guide Pattern Engine Active!'));
 
 async function fetchWinGoData() {
     try {
@@ -231,8 +237,8 @@ async function fetchWinGoData() {
 
             if (predictionCount >= 60) {
                 let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
-                let summaryMsg = "👑 **API OPTIMIZED MASTER** 👑\n\n" +
-                                 "📊 **60 PREDICTIONS BATCH SUMMARY REPORT** 📊\n" +
+                let summaryMsg = "👑 **MASTER GUIDE BOT SUMMARY** 👑\n\n" +
+                                 "📊 **60 PREDICTIONS BATCH REPORT** 📊\n" +
                                  "━━━━━━━━━━━━━━━━━━━━━\n" +
                                  "🎯 **TOTAL PREDICTIONS:** 60\n" +
                                  "🏆 **BIG / SMALL WINS:** " + totalWins + "\n" +
@@ -257,14 +263,14 @@ async function fetchWinGoData() {
             }
         }
 
-        let pred = multiPatternEngine(list);
+        let pred = masterGuidePatternEngine(list);
         let currentBetName = levelData[maintenanceLevel]?.name || ("₹" + getBetVal(maintenanceLevel));
         let profitSign = totalProfitLoss >= 0 ? "₹" + totalProfitLoss.toFixed(2) : "-₹" + Math.abs(totalProfitLoss).toFixed(2);
 
-        let msg = "🔥 **WINGO 30S PATTERN ENGINE** 🔥\n" +
+        let msg = "🔥 **WINGO 30S MASTER GUIDE ENGINE** 🔥\n" +
                   "━━━━━━━━━━━━━━━━━━━━━\n" +
                   "📌 **PERIOD:** `" + nextPeriod + "`\n" +
-                  "🔍 **PATTERN:** `" + pred.patternName + "`\n" +
+                  "🔍 **DETECTED PATTERN:** `" + pred.patternName + "`\n" +
                   "🎲 **BET:** **" + pred.predResult + "**\n" +
                   "🔢 **PRED NO:** `" + pred.numbersStr + "`\n" +
                   "🎨 **COLOUR:** " + pred.colorStr + "\n" +
@@ -309,6 +315,6 @@ async function startContinuousLoop() {
 }
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log("API Token Optimized Bot Active on port " + PORT); 
+    console.log("Master Guide Bot Active on port " + PORT); 
     startContinuousLoop(); 
 });
