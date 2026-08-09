@@ -5,7 +5,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Direct Configuration (No Render Environment Variables needed)
+// Direct Configuration
 const BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33';
 const MAIN_CHANNEL = '-1002486828817';
@@ -331,7 +331,7 @@ async function fetchWinGoData() {
         lastPredictedResult = pred.predResult;
         lastPredictedNumbers = pred.targetNumbers;
 
-    }чити (e) {
+    } catch (e) {
         console.error("Error:", e.message);
     }
 }
