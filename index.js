@@ -5,10 +5,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// IMPORTANT:
-// Set these as environment variables.
-// BOT_TOKEN=your_telegram_bot_token
-// SCRAPINGANT_API_KEY=your_scrapingant_api_key
+// Environment Variables
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
@@ -122,7 +119,7 @@ function masterGuidePatternEngine(history) {
 
         if (streak >= 5) {
             predResult = r[0] === "BIG" ? "SMALL" : "BIG";
-            patternName = `Long ${r[0]} Trend Break (${streak}x)`;
+            patternName = `Long Trend Break (${streak}x)`;
         }
         // 2. TRIPLE / QUADRA TREND
         else if (streak >= 3) {
@@ -142,12 +139,12 @@ function masterGuidePatternEngine(history) {
         // 5. CORRECTION
         else if (r[0] === r[1] && r[1] !== r[2] && r[2] === r[3]) {
             predResult = r[2] === "BIG" ? "SMALL" : "BIG";
-            patternName = "2-in-1 / 3-in-1 Correction Phase";
+            patternName = "Correction Phase";
         }
         // 6. DEFAULT
         else {
             predResult = r[0] === "BIG" ? "SMALL" : "BIG";
-            patternName = "Mixed / Active Shifting Trend";
+            patternName = "Active Shifting Trend";
         }
 
         // NUMBER FREQUENCY
@@ -188,12 +185,6 @@ function masterGuidePatternEngine(history) {
             colorStr = "🔴 RED / 🟣 VIOLET";
         } else if (matchedNumbers.includes(5)) {
             colorStr = "🟢 GREEN / 🟣 VIOLET";
-        } else if (matchedNumbers.some(n => [2, 4, 6, 8].includes(n))) {
-            colorStr = predResult === "BIG" ? "🟢 GREEN / 🔴 RED" : "🔴 RED";
-        }
-
-        if (lastNum === 7 && matchedNumbers.includes(0) && matchedNumbers.includes(6)) {
-            patternName = "Guide Rule: After [7] -> [0, 6]";
         }
 
         return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName };
