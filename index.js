@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 
 // Direct Configuration
-const BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';
+const BOT_TOKEN = '8736025263:AAH5MuVDHWYtJ9x_-yYok7Y_Qj_Eez6s7EM';
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33';
 const MAIN_CHANNEL = '-1002486828817';
 const REPORT_CHANNEL = '-1003345976502';
