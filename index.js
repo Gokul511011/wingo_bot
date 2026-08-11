@@ -8,8 +8,7 @@ const PORT = process.env.PORT || 10000;
 // Direct Configuration
 const BOT_TOKEN = '8736025263:AAH5MuVDHWYtJ9x_-yYok7Y_Qj_Eez6s7EM';
 const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33';
-const MAIN_CHANNEL = '-1002486828817';
-const REPORT_CHANNEL = '-1003345976502';
+const TARGET_CHAT_ID = '8736025263';
 
 const RAW_TARGET_URL =
     'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
@@ -273,8 +272,7 @@ async function fetchWinGoData() {
                     "━━━━━━━━━━━━━━━━━━━━━\n" +
                     "🔄 **Batch completed! Resetting stats for the next 60 rounds!**";
 
-                await bot.sendMessage(MAIN_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
-                await bot.sendMessage(REPORT_CHANNEL, summaryMsg, { parse_mode: 'Markdown' });
+                await bot.sendMessage(TARGET_CHAT_ID, summaryMsg, { parse_mode: 'Markdown' });
 
                 predictionCount = 0;
                 totalWins = 0;
@@ -324,7 +322,7 @@ async function fetchWinGoData() {
             "━━━━━━━━━━━━━━━━━━━━━\n\n" +
             "🔗 **Register Link:**\n" + REGISTER_LINK;
 
-        await bot.sendMessage(MAIN_CHANNEL, msg, { parse_mode: 'Markdown' });
+        await bot.sendMessage(TARGET_CHAT_ID, msg, { parse_mode: 'Markdown' });
 
         lastSentPeriod = nextPeriod;
         lastPredictedPeriod = nextPeriod;
