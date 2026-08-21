@@ -5,20 +5,19 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Bot & ScrapingAnt Configuration (Full Token Set Here)
+// Bot & ScrapingAnt Configuration
 const BOT_TOKEN = '7556271803:AAG9aZhy0sxjZN3WhFxZ_LU0KC8erzRYwAA';
 const SCRAPINGANT_API_KEY = 'e69725dd04034c0abdfd7356d2a830f7';
 const TARGET_CHAT_ID = '7556271803';
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
 
+// Updated ScrapingAnt URL format based on your cURL
 const SCRAPINGANT_URL = 
-    `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}` +
-    `&url=${encodeURIComponent(RAW_TARGET_URL)}` +
-    `&proxy_country=in&browser=false`;
+    `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(RAW_TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// Telegram Bot Setup with Polling fix
+// Telegram Bot Setup
 const bot = new TelegramBot(BOT_TOKEN, { 
     polling: {
         interval: 3000,
@@ -179,15 +178,25 @@ function masterGuidePatternEngine(history) {
 }
 
 bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Bot active-la irukku. 5-Sequence Big/Small Analysis-oda predictions varum!");
+    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Bot active-la irukku. Type /testpred to check manual prediction output!");
 });
 
-app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active with Sequence Checker!'));
+// Manual command to test if bot and scraping work instantly
+bot.onText(/\/testpred/, async (msg) => {
+    try {
+        await bot.sendMessage(msg.chat.id, "🔍 Testing ScrapingAnt API and fetching manual prediction...");
+        await fetchWinGoData(true); // Force send
+    } catch (err) {
+        bot.sendMessage(msg.chat.id, "❌ Error in test: " + err.message);
+    }
+});
+
+app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active with cURL structure!'));
 
 /*
 FETCH WINGO DATA & PREDICTION LOOP
 */
-async function fetchWinGoData() {
+async function fetchWinGoData(forceSend = false) {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
         let rawContent = response.data.content || response.data;
@@ -196,7 +205,10 @@ async function fetchWinGoData() {
             : JSON.parse(typeof rawContent === 'string' && rawContent.includes('{') ? rawContent.match(/{[\s\S]*}/)[0] : rawContent);
         
         let list = Array.isArray(parsedData) ? parsedData : (parsedData?.data?.list || parsedData?.data || parsedData?.list);
-        if (!list || !Array.isArray(list) || list.length === 0) return;
+        if (!list || !Array.isArray(list) || list.length === 0) {
+            console.log("No list found in response data.");
+            return;
+        }
 
         let lastItem = list[0];
         let actualPeriod = String(
@@ -213,8 +225,11 @@ async function fetchWinGoData() {
         let currentSec = new Date().getSeconds();
         let secondsIntoPeriod = currentSec % 30;
 
-        if (nextPeriod === lastSentPeriod) return;
-        if (secondsIntoPeriod < 23 || secondsIntoPeriod > 25) return;
+        if (!forceSend) {
+            if (nextPeriod === lastSentPeriod) return;
+            // Timing adjustment to allow smoother broadcast
+            if (secondsIntoPeriod < 20 || secondsIntoPeriod > 28) return;
+        }
 
         let dynamicStatusMsg = "";
 
@@ -333,8 +348,8 @@ async function fetchWinGoData() {
 
 async function startContinuousLoop() {
     while (true) {
-        await fetchWinGoData();
-        await new Promise(r => setTimeout(r, 4000)); // Increased interval slightly to prevent 409 limit issues
+        await fetchWinGoData(false);
+        await new Promise(r => setTimeout(r, 3000));
     }
 }
 
