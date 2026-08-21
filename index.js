@@ -39,7 +39,7 @@ const bot = new TelegramBot(BOT_TOKEN, {
 });
 
 bot.on("polling_error", (error) => {
-  console.log("Telegram polling:", error.message);
+  console.log("Telegram polling error:", error.message);
 });
 
 // =====================================================
@@ -87,10 +87,6 @@ function getBigSmall(number) {
   return number >= 5 ? "B" : "S";
 }
 
-function getBigSmallText(value) {
-  return value === "B" ? "BIG" : "SMALL";
-}
-
 function getColor(number) {
   if ([2, 4, 6, 8].includes(number)) return "RED";
   if ([1, 3, 7, 9].includes(number)) return "GREEN";
@@ -108,19 +104,15 @@ function extractList(parsedData) {
   if (Array.isArray(parsedData)) {
     return parsedData;
   }
-
   if (Array.isArray(parsedData?.data?.list)) {
     return parsedData.data.list;
   }
-
   if (Array.isArray(parsedData?.data)) {
     return parsedData.data;
   }
-
   if (Array.isArray(parsedData?.list)) {
     return parsedData.list;
   }
-
   return [];
 }
 
@@ -134,23 +126,19 @@ async function fetchWinGoData() {
   });
 
   let rawContent = response.data?.content ?? response.data;
-
   let parsedData;
 
   if (typeof rawContent === "object") {
     parsedData = rawContent;
   } else {
     const text = String(rawContent);
-
     try {
       parsedData = JSON.parse(text);
     } catch {
       const match = text.match(/\{[\s\S]*\}/);
-
       if (!match) {
         throw new Error("Unable to parse API response");
       }
-
       parsedData = JSON.parse(match[0]);
     }
   }
@@ -183,121 +171,61 @@ function createBSHistory(history, limit = 50) {
 }
 
 // =====================================================
-// PATTERN GENERATOR
-// PDF PATTERN CATALOGUE = 2^n
+// PREDICTION LOGIC (Trend & Pattern Analysis)
 // =====================================================
 
-function generatePatterns(length) {
-  const total = 2 ** length;
-  const patterns = [];
-
-  for (let i = 0; i < total; i++) {
-    let pattern = "";
-
-    for (let bit = length - 1; bit >= 0; bit--) {
-      pattern += (i & (1 << bit)) ? "B" : "S";
-    }
-
-    patterns.push(pattern);
+function predictNextMove(bsHistory) {
+  if (bsHistory.length < 5) {
+    return { prediction: "WAIT", confidence: "Low", reason: "Not enough data" };
   }
 
-  return patterns;
-}
+  // Check last 3 trends (Trend Following vs Reversal)
+  const last3 = bsHistory.slice(0, 3).join("");
+  const lastOne = bsHistory[0];
 
-// =====================================================
-// PATTERN STATISTICS
-// =====================================================
-
-function analyzePattern(pattern) {
   let bigCount = 0;
   let smallCount = 0;
 
-  let bigToSmall = 0;
-  let smallToBig = 0;
-
-  let alternations = 0;
-  let runs = pattern.length ? 1 : 0;
-
-  for (let i = 0; i < pattern.length; i++) {
-    if (pattern[i] === "B") {
-      bigCount++;
-    } else {
-      smallCount++;
-    }
-
-    if (i > 0) {
-      if (pattern[i - 1] === "B" && pattern[i] === "S") {
-        bigToSmall++;
-      }
-
-      if (pattern[i - 1] === "S" && pattern[i] === "B") {
-        smallToBig++;
-      }
-
-      if (pattern[i - 1] !== pattern[i]) {
-        alternations++;
-        runs++;
-      }
-    }
+  // Check recent frequency (last 10 rounds)
+  const recent10 = bsHistory.slice(0, 10);
+  for (const b of recent10) {
+    if (b === "B") bigCount++;
+    else smallCount++;
   }
 
-  let type = "Mixed";
+  // Basic trend prediction based on recent balance
+  let prediction = lastOne === "B" ? "SMALL" : "BIG"; // default alternative
+  let confidence = "Medium";
+  let reason = "Alternation trend analysis";
 
-  if (bigCount === pattern.length || smallCount === pattern.length) {
-    type = "All same";
-  } else if (alternations === pattern.length - 1) {
-    type = "Perfect alternation";
+  if (last3 === "BBB") {
+    prediction = "SMALL";
+    confidence = "High";
+    reason = "Streak breaker (3 BIGs detected)";
+  } else if (last3 === "SSS") {
+    prediction = "BIG";
+    confidence = "High";
+    reason = "Streak breaker (3 SMALLs detected)";
+  } else if (bigCount > 7) {
+    prediction = "SMALL";
+    confidence = "Medium";
+    reason = "Big is over-frequent in last 10 rounds";
+  } else if (smallCount > 7) {
+    prediction = "BIG";
+    confidence = "Medium";
+    reason = "Small is over-frequent in last 10 rounds";
   }
 
   return {
-    length: pattern.length,
-    pattern,
-    bigCount,
-    smallCount,
-    bigToSmall,
-    smallToBig,
-    alternations,
-    runs,
-    type
+    prediction,
+    confidence,
+    reason,
+    nextPeriodEstimated: historyItemNextPeriod(bsHistory)
   };
 }
 
-// =====================================================
-// FIND MATCHING PATTERN
-// =====================================================
-
-function findMatchingPatterns(bsHistory) {
-  const results = [];
-
-  const maxLength = Math.min(10, bsHistory.length);
-
-  for (let length = 1; length <= maxLength; length++) {
-    const current = bsHistory.slice(0, length).join("");
-
-    const generated = generatePatterns(length);
-
-    if (generated.includes(current)) {
-      results.push(analyzePattern(current));
-    }
-  }
-
-  return results;
-}
-
-// =====================================================
-// LONGEST CURRENT PATTERN
-// =====================================================
-
-function getLongestPattern(bsHistory) {
-  const maxLength = Math.min(10, bsHistory.length);
-
-  if (maxLength === 0) {
-    return null;
-  }
-
-  const pattern = bsHistory.slice(0, maxLength).join("");
-
-  return analyzePattern(pattern);
+function historyItemNextPeriod(bsHistory) {
+  return "Next Period";
 }
 
 // =====================================================
@@ -310,19 +238,7 @@ function calculateStatistics(history, limit = 50) {
   let big = 0;
   let small = 0;
 
-  const numbers = {
-    0: 0,
-    1: 0,
-    2: 0,
-    3: 0,
-    4: 0,
-    5: 0,
-    6: 0,
-    7: 0,
-    8: 0,
-    9: 0
-  };
-
+  const numbers = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0, 8:0, 9:0 };
   const colors = {};
 
   for (const item of selected) {
@@ -331,90 +247,41 @@ function calculateStatistics(history, limit = 50) {
     const color = getColor(n);
 
     numbers[n]++;
-
     if (bs === "B") big++;
     if (bs === "S") small++;
 
     colors[color] = (colors[color] || 0) + 1;
   }
 
-  return {
-    total: selected.length,
-    big,
-    small,
-    numbers,
-    colors
-  };
+  return { total: selected.length, big, small, numbers, colors };
 }
 
 // =====================================================
-// ANALYSIS REPORT
-// =====================================================
-
-function createAnalysis(history) {
-  const bsHistory = createBSHistory(history, 50);
-
-  const statistics = calculateStatistics(history, 50);
-
-  const longestPattern = getLongestPattern(bsHistory);
-
-  const matchingPatterns = findMatchingPatterns(bsHistory);
-
-  return {
-    statistics,
-    bsHistory,
-    longestPattern,
-    matchingPatterns
-  };
-}
-
-// =====================================================
-// FORMAT TELEGRAM REPORT
+// FORMAT TELEGRAM REPORT WITH PREDICTION
 // =====================================================
 
 function formatReport(history) {
-  const analysis = createAnalysis(history);
-
-  const stats = analysis.statistics;
-  const pattern = analysis.longestPattern;
+  const stats = calculateStatistics(history, 50);
+  const bsHistory = createBSHistory(history, 50);
+  const predictionInfo = predictNextMove(bsHistory);
 
   let msg = "";
 
-  msg += "📊 *WINGO HISTORY ANALYZER*\n";
+  msg += "📊 *WINGO AI PREDICTOR & ANALYZER*\n";
   msg += "━━━━━━━━━━━━━━━━━━━━\n\n";
 
+  msg += "🎯 *NEXT ROUND PREDICTION*\n";
+  msg += `👉 Prediction: *${predictionInfo.prediction}*\n`;
+  msg += `📈 Confidence: ${predictionInfo.confidence}\n`;
+  msg += `💡 Reason: ${predictionInfo.reason}\n\n`;
+
   msg += `📚 *Rounds Checked:* ${stats.total}\n`;
-  msg += `🟢 *BIG:* ${stats.big}\n`;
-  msg += `🔴 *SMALL:* ${stats.small}\n\n`;
+  msg += `🟢 *BIG:* ${stats.big} | 🔴 *SMALL:* ${stats.small}\n\n`;
 
-  if (pattern) {
-    msg += "🔍 *CURRENT PATTERN*\n";
-    msg += `Pattern: \`${pattern.pattern}\`\n`;
-    msg += `Length: ${pattern.length}\n`;
-    msg += `Type: *${pattern.type}*\n`;
-    msg += `B Count: ${pattern.bigCount}\n`;
-    msg += `S Count: ${pattern.smallCount}\n`;
-    msg += `Alternations: ${pattern.alternations}\n`;
-    msg += `Runs: ${pattern.runs}\n\n`;
-  }
+  msg += "📌 *LAST 10 B/S TREND*\n";
+  msg += `\`${bsHistory.slice(0, 10).join(" ")}\`\n\n`;
 
-  msg += "🔢 *NUMBER FREQUENCY*\n";
-
-  for (let n = 0; n <= 9; n++) {
-    msg += `${n}: ${stats.numbers[n]}  `;
-  }
-
-  msg += "\n\n🎨 *COLOUR FREQUENCY*\n";
-
-  for (const [color, count] of Object.entries(stats.colors)) {
-    msg += `${color}: ${count}\n`;
-  }
-
-  msg += "\n━━━━━━━━━━━━━━━━━━━━\n";
-  msg += "📌 *LAST 50 B/S*\n";
-  msg += `\`${analysis.bsHistory.join(" ")}\`\n`;
-
-  msg += "\n⚠️ Pattern analysis only — no future-result guarantee.";
+  msg += "⚠️ *Disclaimer:* Prediction is based on mathematical pattern trends. Play at your own risk.";
 
   return msg;
 }
@@ -426,17 +293,14 @@ function formatReport(history) {
 bot.onText(/^\/start$/, async (msg) => {
   await bot.sendMessage(
     msg.chat.id,
-    "👋 WINGO History Analyzer active.\n\n" +
-      "/analyze - Last 50 rounds analysis\n" +
-      "/pattern - Current B/S pattern\n" +
-      "/stats - Number & colour statistics",
-    {
-      parse_mode: "Markdown"
-    }
+    "👋 WINGO Predictor Bot Active.\n\n" +
+      "/predict - Get next round prediction & analysis\n" +
+      "/stats - Last 50 numbers & color stats",
+    { parse_mode: "Markdown" }
   );
 });
 
-bot.onText(/^\/analyze$/, async (msg) => {
+bot.onText(/^\/predict$/, async (msg) => {
   try {
     const history = await fetchWinGoData();
 
@@ -446,76 +310,30 @@ bot.onText(/^\/analyze$/, async (msg) => {
     }
 
     const report = formatReport(history);
-
-    await bot.sendMessage(msg.chat.id, report, {
-      parse_mode: "Markdown"
-    });
-  } catch (error) {
-    console.error("Analyze error:", error.message);
-
-    await bot.sendMessage(
-      msg.chat.id,
-      "❌ Data analysis error. Please try again."
-    );
+    await bot.sendMessage(msg.chat.id, report, { parse_mode: "Markdown" });
+  } else {
+    // handled error catch below
   }
-});
-
-bot.onText(/^\/pattern$/, async (msg) => {
-  try {
-    const history = await fetchWinGoData();
-
-    const bsHistory = createBSHistory(history, 50);
-    const pattern = getLongestPattern(bsHistory);
-
-    if (!pattern) {
-      await bot.sendMessage(msg.chat.id, "❌ Pattern data இல்லை.");
-      return;
-    }
-
-    const text =
-      "🔍 *CURRENT PATTERN*\n\n" +
-      `Pattern: \`${pattern.pattern}\`\n` +
-      `Length: ${pattern.length}\n` +
-      `Type: *${pattern.type}*\n` +
-      `BIG: ${pattern.bigCount}\n` +
-      `SMALL: ${pattern.smallCount}\n` +
-      `Transitions: ${pattern.alternations}`;
-
-    await bot.sendMessage(msg.chat.id, text, {
-      parse_mode: "Markdown"
-    });
-  } catch (error) {
-    console.error("Pattern error:", error.message);
-    await bot.sendMessage(msg.chat.id, "❌ Pattern analysis failed.");
+} catch (error) {
+    console.error("Predict error:", error.message);
+    await bot.sendMessage(msg.chat.id, "❌ Prediction error. Please try again.");
   }
 });
 
 bot.onText(/^\/stats$/, async (msg) => {
   try {
     const history = await fetchWinGoData();
-
     const stats = calculateStatistics(history, 50);
 
     let text = "📊 *LAST 50 STATISTICS*\n\n";
-
-    text += `BIG: ${stats.big}\n`;
-    text += `SMALL: ${stats.small}\n\n`;
-
+    text += `BIG: ${stats.big} | SMALL: ${stats.small}\n\n`;
     text += "🔢 *NUMBERS*\n";
 
     for (let n = 0; n <= 9; n++) {
       text += `${n} → ${stats.numbers[n]}\n`;
     }
 
-    text += "\n🎨 *COLOURS*\n";
-
-    for (const [color, count] of Object.entries(stats.colors)) {
-      text += `${color} → ${count}\n`;
-    }
-
-    await bot.sendMessage(msg.chat.id, text, {
-      parse_mode: "Markdown"
-    });
+    await bot.sendMessage(msg.chat.id, text, { parse_mode: "Markdown" });
   } catch (error) {
     console.error("Stats error:", error.message);
     await bot.sendMessage(msg.chat.id, "❌ Statistics failed.");
@@ -523,28 +341,20 @@ bot.onText(/^\/stats$/, async (msg) => {
 });
 
 // =====================================================
-// WEB SERVER
+// WEB SERVER & HEALTH CHECK
 // =====================================================
 
 app.get("/", (req, res) => {
-  res.send("WINGO History Analyzer is Live!");
+  res.send("WINGO Predictor Bot is Live!");
 });
-
-// =====================================================
-// HEALTH CHECK
-// =====================================================
 
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
-    service: "wingo-history-analyzer",
+    service: "wingo-predictor-bot",
     time: new Date().toISOString()
   });
 });
-
-// =====================================================
-// START SERVER
-// =====================================================
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
