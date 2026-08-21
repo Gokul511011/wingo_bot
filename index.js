@@ -11,11 +11,12 @@ const SCRAPINGANT_API_KEY = 'e69725dd04034c0abdfd7356d2a830f7';
 const TARGET_CHAT_ID = '7556271803';
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
 
-// Updated ScrapingAnt URL format based on your cURL
+// Added proxy country to bypass blocks
 const SCRAPINGANT_URL = 
-    `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(RAW_TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}`;
+    `https://api.scrapingant.com/v2/general?url=${encodeURIComponent(RAW_TARGET_URL)}&x-api-key=${SCRAPINGANT_API_KEY}&proxy_country=in`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+const GAME_LINK = 'https://rajastake7.com/#/saasLottery/WinGo?gameCode=WinGo_30S&lottery=WinGo';
 
 // Telegram Bot Setup
 const bot = new TelegramBot(BOT_TOKEN, { 
@@ -181,17 +182,17 @@ bot.onText(/\/start/, (msg) => {
     bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Bot active-la irukku. Type /testpred to check manual prediction output!");
 });
 
-// Manual command to test if bot and scraping work instantly
+// Manual command to test prediction instantly
 bot.onText(/\/testpred/, async (msg) => {
     try {
         await bot.sendMessage(msg.chat.id, "🔍 Testing ScrapingAnt API and fetching manual prediction...");
-        await fetchWinGoData(true); // Force send
+        await fetchWinGoData(true);
     } catch (err) {
         bot.sendMessage(msg.chat.id, "❌ Error in test: " + err.message);
     }
 });
 
-app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active with cURL structure!'));
+app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active with JSON Safe Handler!'));
 
 /*
 FETCH WINGO DATA & PREDICTION LOOP
@@ -200,6 +201,13 @@ async function fetchWinGoData(forceSend = false) {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
         let rawContent = response.data.content || response.data;
+
+        // Check if rawContent is accidentally an HTML string (Cloudflare block check)
+        if (typeof rawContent === 'string' && rawContent.trim().startsWith('<')) {
+            console.error("ScrapingAnt Error: Received HTML instead of JSON. Target might be blocking or redirecting.");
+            return;
+        }
+
         let parsedData = typeof rawContent === 'object'
             ? rawContent
             : JSON.parse(typeof rawContent === 'string' && rawContent.includes('{') ? rawContent.match(/{[\s\S]*}/)[0] : rawContent);
@@ -227,7 +235,6 @@ async function fetchWinGoData(forceSend = false) {
 
         if (!forceSend) {
             if (nextPeriod === lastSentPeriod) return;
-            // Timing adjustment to allow smoother broadcast
             if (secondsIntoPeriod < 20 || secondsIntoPeriod > 28) return;
         }
 
@@ -332,7 +339,8 @@ async function fetchWinGoData(forceSend = false) {
             "🔹 LEVEL 3: " + levelWins[3] + " WINS (💥 " + levelJackpots[3] + " JK)\n" +
             "🔹 LEVEL 4: " + levelWins[4] + " WINS (💥 " + levelJackpots[4] + " JK)\n" +
             "━━━━━━━━━━━━━━━━━━━━━\n\n" +
-            "🔗 Register Link:\n" + REGISTER_LINK;
+            "🎮 **Play Game Link:**\n" + GAME_LINK + "\n\n" +
+            "🔗 **Register Link:**\n" + REGISTER_LINK;
 
         await bot.sendMessage(TARGET_CHAT_ID, msg, { parse_mode: 'Markdown' });
 
