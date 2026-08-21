@@ -5,11 +5,17 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Updated Configuration based on your provided keys
+// Credentials & ScrapingAnt Configuration (1 Request = 1 Credit Optimized)
 const BOT_TOKEN = '7556271803:AAG9aZhy0sxjZN3WhFxZ_LU0KC8erzRYwAA';
+const SCRAPINGANT_API_KEY = 'e69725dd04034c0abdfd7356d2a830f7';
 const TARGET_CHAT_ID = '7556271803';
 
-const WINGO_API_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
+const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
+
+const SCRAPINGANT_URL = 
+    `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}` +
+    `&url=${encodeURIComponent(RAW_TARGET_URL)}` +
+    `&proxy_country=in&browser=false`;
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
@@ -168,16 +174,19 @@ app.get('/', (req, res) => res.send('Master Guide Pattern Engine Active!'));
 
 /*
 =========================================================
-FETCH WINGO DATA DIRECTLY
+FETCH WINGO DATA VIA SCRAPINGANT (1 Credit Optimized)
 =========================================================
 */
 async function fetchWinGoData() {
     try {
-        const response = await axios.get(WINGO_API_URL, { timeout: 10000 });
-        let rawContent = response.data;
+        const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
+        let rawContent = response.data.content || response.data;
 
-        // Handle array or object formats returned directly by the endpoint
-        let list = Array.isArray(rawContent) ? rawContent : (rawContent?.data || rawContent?.list);
+        let parsedData = typeof rawContent === 'object'
+            ? rawContent
+            : JSON.parse(typeof rawContent === 'string' && rawContent.includes('{') ? rawContent.match(/\{[\s\S]*\}/)[0] : rawContent);
+
+        let list = Array.isArray(parsedData) ? parsedData : (parsedData?.data?.list || parsedData?.data || parsedData?.list);
         if (!list || !Array.isArray(list) || list.length === 0) return;
 
         let lastItem = list[0];
@@ -199,7 +208,8 @@ async function fetchWinGoData() {
         let secondsIntoPeriod = currentSec % 30;
 
         if (nextPeriod === lastSentPeriod) return;
-        if (secondsIntoPeriod < 23 || secondsIntoPeriod > 24) return;
+        // Only trigger during the specific second window to avoid wasting requests/credits
+        if (secondsIntoPeriod < 23 || secondsIntoPeriod > 25) return;
 
         let dynamicStatusMsg = "";
 
@@ -314,14 +324,15 @@ async function fetchWinGoData() {
         lastPredictedNumbers = pred.targetNumbers;
 
     } catch (e) {
-        console.error("Error:", e.message);
+        console.error("ScrapingAnt Error:", e.message);
     }
 }
 
 async function startContinuousLoop() {
     while (true) {
         await fetchWinGoData();
-        await new Promise(r => setTimeout(r, 1000));
+        // Checked every 3 seconds to preserve ScrapingAnt credits efficiently
+        await new Promise(r => setTimeout(r, 3000));
     }
 }
 
