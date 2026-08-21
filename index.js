@@ -73,7 +73,7 @@ function getNumberColor(num) {
 }
 
 /*
-MASTER GUIDE PATTERN ENGINE (Strictly 2 Numbers & Big/Small)
+MASTER GUIDE PATTERN ENGINE WITH SEQUENCE & BIG/SMALL ANALYSIS
 */
 function masterGuidePatternEngine(history) {
     try {
@@ -88,9 +88,20 @@ function masterGuidePatternEngine(history) {
                 targetNumbers: [6, 8],
                 numbersStr: "6, 8",
                 colorStr: "🟢 GREEN",
-                patternName: "Initial Stable Scan"
+                patternName: "Initial Stable Scan",
+                sequenceList: "Data building..."
             };
         }
+
+        // Generate past 5-sequence tracking format (e.g., 001 to 005 style check)
+        let recentFive = history.slice(0, 5).reverse();
+        let sequenceLines = recentFive.map((item, idx) => {
+            let pNum = String(item.issueName || item.issueNumber || item.period || item.issue || "").slice(-3);
+            let resNum = parseInt(item.number !== undefined ? item.number : item.result);
+            let bOrS = resNum >= 5 ? "BIG" : "SMALL";
+            let col = getNumberColor(resNum);
+            return `🔹 ...${pNum || '00' + (idx+1)} | No: ${resNum} | ${bOrS} | ${col}`;
+        }).join("\n");
 
         let r = allResults;
         let predResult = "BIG";
@@ -155,23 +166,24 @@ function masterGuidePatternEngine(history) {
             colorStr = "🟢 GREEN / 🟣 VIOLET";
         }
 
-        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName };
+        return { predResult, targetNumbers: matchedNumbers, numbersStr, colorStr, patternName, sequenceList: sequenceLines };
     } catch (e) {
         return {
             predResult: "BIG",
             targetNumbers: [6, 8],
             numbersStr: "6, 8",
             colorStr: "🟢 GREEN",
-            patternName: "Guide Fallback"
+            patternName: "Guide Fallback",
+            sequenceList: "No sequence available"
         };
     }
 }
 
 bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Bot active-la irukku. Max Level 4 limit-oda predictions varum!");
+    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Bot active-la irukku. 5-Sequence Big/Small Analysis-oda predictions varum!");
 });
 
-app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active!'));
+app.get('/', (req, res) => res.send('WinGo Master Guide Engine Active with Sequence Checker!'));
 
 /*
 FETCH WINGO DATA & PREDICTION LOOP
@@ -230,12 +242,11 @@ async function fetchWinGoData() {
                 } else {
                     dynamicStatusMsg = `🎉 **CONGRATULATIONS (LEVEL ${maintenanceLevel} ₹${winAmount} WIN)** 🎉\n🏆 **${actualResult} (${actualNum}) WIN**`;
                 }
-                maintenanceLevel = 1; // Reset to Level 1 on Win
+                maintenanceLevel = 1; 
             } else {
                 totalLosses++;
                 totalProfitLoss -= currentBetVal;
 
-                // STRICT MAX LEVEL 4 LIMIT
                 if (maintenanceLevel >= 4) {
                     dynamicStatusMsg = `💔 **LOSS AT LEVEL 4: ${actualResult} (${actualNum})**\n🛡️ **SAFETY RESET: RESTARTING FROM LEVEL 1**`;
                     maintenanceLevel = 1;
@@ -282,7 +293,10 @@ async function fetchWinGoData() {
             "━━━━━━━━━━━━━━━━━━━━━\n" +
             "⏰ ADVANCE: 6–7 SEC\n" +
             "📌 PERIOD: " + nextPeriod + "\n" +
-            "🔍 DETECTED PATTERN: " + pred.patternName + "\n" +
+            "🔍 DETECTED PATTERN: " + pred.patternName + "\n\n" +
+            "📊 **PAST 5-SEQUENCE CHECK:**\n" +
+            pred.sequenceList + "\n\n" +
+            "━━━━━━━━━━━━━━━━━━━━━\n" +
             "🎲 BET: " + pred.predResult + "\n" +
             "🔢 PRED NO: " + pred.numbersStr + "\n" +
             "🎨 COLOUR: " + pred.colorStr + "\n" +
