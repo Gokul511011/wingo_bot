@@ -5,21 +5,13 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Direct Configuration
-const BOT_TOKEN = '8736025263:AAH5MuVDHWYtJ9x_-yYok7Y_Qj_Eez6s7EM';
-const SCRAPINGANT_API_KEY = '376f50a96eb04accb756b4febc074f33';
-const TARGET_CHAT_ID = '8736025263';
+// Updated Configuration based on your provided keys
+const BOT_TOKEN = '7556271803:AAG9aZhy0sxjZN3WhFxZ_LU0KC8erzRYwAA';
+const TARGET_CHAT_ID = '7556271803';
 
-const RAW_TARGET_URL =
-    'https://draw.ar-lottery01.com/WinGo/WinGo_30S/GetHistoryIssuePage.json?pageSize=500&pageNo=1';
+const WINGO_API_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
 
-const SCRAPINGANT_URL =
-    `https://api.scrapingant.com/v2/general?x-api-key=${SCRAPINGANT_API_KEY}` +
-    `&url=${encodeURIComponent(RAW_TARGET_URL)}` +
-    `&proxy_country=in&browser=false`;
-
-const REGISTER_LINK =
-    'https://www.rajastake7.com/#/register?invitationCode=172723872480';
+const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: false });
 
@@ -36,13 +28,8 @@ let totalProfitLoss = 0;
 let predictionCount = 0;
 let maxLevelReached = 1;
 
-let levelWins = {
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0
-};
-
-let levelJackpots = {
-    1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0
-};
+let levelWins = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
+let levelJackpots = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 };
 
 const levelData = {
     1: { name: "₹1", val: 1 },
@@ -77,7 +64,7 @@ MASTER GUIDE PATTERN ENGINE
 */
 function masterGuidePatternEngine(history) {
     try {
-        let allNumbers = history.map(x =>
+        let allNumbers = history.map(x => 
             parseInt(x.number !== undefined ? x.number : x.result)
         );
 
@@ -181,19 +168,16 @@ app.get('/', (req, res) => res.send('Master Guide Pattern Engine Active!'));
 
 /*
 =========================================================
-FETCH WINGO DATA
+FETCH WINGO DATA DIRECTLY
 =========================================================
 */
 async function fetchWinGoData() {
     try {
-        const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
-        let rawContent = response.data.content || response.data;
+        const response = await axios.get(WINGO_API_URL, { timeout: 10000 });
+        let rawContent = response.data;
 
-        let parsedData = typeof rawContent === 'object'
-            ? rawContent
-            : JSON.parse(rawContent.match(/\{[\s\S]*\}/)[0]);
-
-        let list = parsedData?.data?.list || parsedData?.list;
+        // Handle array or object formats returned directly by the endpoint
+        let list = Array.isArray(rawContent) ? rawContent : (rawContent?.data || rawContent?.list);
         if (!list || !Array.isArray(list) || list.length === 0) return;
 
         let lastItem = list[0];
