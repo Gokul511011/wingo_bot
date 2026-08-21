@@ -15,40 +15,59 @@ const SCRAPINGANT_URL =
     `&url=${encodeURIComponent(RAW_TARGET_URL)}` +
     `&proxy_country=in&browser=false`;
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: true });
-
-app.get('/', (req, res) => res.send('Bot is active and running!'));
-
-// Test command to check if bot responds instantly
-bot.onText(/\/start/, (msg) => {
-    bot.sendMessage(msg.chat.id, "🚀 Bot active-la irukku! WinGo data fetch aaguthu...");
-    fetchAndSendPrediction(msg.chat.id);
+// Using interval polling safely with error catching
+const bot = new TelegramBot(BOT_TOKEN, { 
+    polling: {
+        interval: 2000,
+        autoStart: true,
+        params: {
+            timeout: 10
+        }
+    } 
 });
 
-async function fetchAndSendPrediction(chatId) {
+// Ignore polling conflict errors safely
+bot.on('polling_error', (error) => {
+    if (error.code !== 'ETELEGRAM' || !error.message.includes('409 Conflict')) {
+        console.log(`Polling error: ${error.message}`);
+    }
+});
+
+app.get('/', (req, res) => res.send('WinGo Bot Engine is Live!'));
+
+bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo Bot active-la irukku. Predictions varum!");
+});
+
+async function fetchAndSendPrediction() {
     try {
         const response = await axios.get(SCRAPINGANT_URL, { timeout: 30000 });
         let rawContent = response.data.content || response.data;
         let parsedData = typeof rawContent === 'object' ? rawContent : JSON.parse(rawContent);
 
         let list = Array.isArray(parsedData) ? parsedData : (parsedData?.data?.list || parsedData?.data || parsedData?.list);
-        if (!list || !Array.isArray(list) || list.length === 0) {
-            bot.sendMessage(chatId, "⚠️ API-la irunthu data varala. Check ScrapingAnt credits.");
-            return;
-        }
+        if (!list || !Array.isArray(list) || list.length === 0) return;
 
         let lastItem = list[0];
         let period = lastItem.issueName || lastItem.issueNumber || lastItem.period || "N/A";
         let number = lastItem.number !== undefined ? lastItem.number : lastItem.result;
         let result = number >= 5 ? "BIG" : "SMALL";
 
-        let msg = `🔥 **TEST PREDICTION ENGINE** 🔥\n📌 Period: \`${period}\`\n🎲 Last Number: \`${number}\`\n🎯 Trend Guess: **${result}**`;
-        bot.sendMessage(chatId, msg, { parse_mode: 'Markdown' });
+        let msg = `🔥 **WINGO LIVE ENGINE** 🔥\n📌 Period: \`${period}\`\n🎲 Number: \`${number}\`\n🎯 Prediction: **${result}**`;
+        await bot.sendMessage(TARGET_CHAT_ID, msg, { parse_mode: 'Markdown' });
     } catch (e) {
-        bot.sendMessage(chatId, `❌ Error: ${e.message}`);
+        console.error("Fetch Error:", e.message);
+    }
+}
+
+async function startLoop() {
+    while (true) {
+        await fetchAndSendPrediction();
+        await new Promise(r => setTimeout(r, 30000)); // Every 30 seconds
     }
 }
 
 app.listen(PORT, '0.0.0.0', () => {
-    console.log("Server listening on port " + PORT);
+    console.log("Bot Server listening on port " + PORT);
+    startLoop();
 });
