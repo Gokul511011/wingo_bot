@@ -5,8 +5,8 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Bot & ScrapingAnt Configuration
-const BOT_TOKEN = '7556271803';
+// Bot & ScrapingAnt Configuration (Full Token Set Here)
+const BOT_TOKEN = '7556271803:AAG9aZhy0sxjZN3WhFxZ_LU0KC8erzRYwAA';
 const SCRAPINGANT_API_KEY = 'e69725dd04034c0abdfd7356d2a830f7';
 const TARGET_CHAT_ID = '7556271803';
 const RAW_TARGET_URL = 'https://draw.ar-lottery01.com/WinGo/WinGo_30S.json?ts=1786719679185';
@@ -18,10 +18,10 @@ const SCRAPINGANT_URL =
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-// Telegram Bot Setup
+// Telegram Bot Setup with Polling fix
 const bot = new TelegramBot(BOT_TOKEN, { 
     polling: {
-        interval: 2000,
+        interval: 3000,
         autoStart: true,
         params: { timeout: 10 }
     } 
@@ -93,7 +93,6 @@ function masterGuidePatternEngine(history) {
             };
         }
 
-        // Generate past 5-sequence tracking format (e.g., 001 to 005 style check)
         let recentFive = history.slice(0, 5).reverse();
         let sequenceLines = recentFive.map((item, idx) => {
             let pNum = String(item.issueName || item.issueNumber || item.period || item.issue || "").slice(-3);
@@ -335,7 +334,7 @@ async function fetchWinGoData() {
 async function startContinuousLoop() {
     while (true) {
         await fetchWinGoData();
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 4000)); // Increased interval slightly to prevent 409 limit issues
     }
 }
 
