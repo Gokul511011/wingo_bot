@@ -5,7 +5,7 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Credentials & ScrapingAnt Configuration (1 Request = 1 Credit Optimized)
+// Bot & ScrapingAnt Configuration (ID: 7556271803)
 const BOT_TOKEN = '7556271803:AAG9aZhy0sxjZN3WhFxZ_LU0KC8erzRYwAA';
 const SCRAPINGANT_API_KEY = 'e69725dd04034c0abdfd7356d2a830f7';
 const TARGET_CHAT_ID = '7556271803';
@@ -19,7 +19,8 @@ const SCRAPINGANT_URL =
 
 const REGISTER_LINK = 'https://www.rajastake7.com/#/register?invitationCode=172723872480';
 
-const bot = new TelegramBot(BOT_TOKEN, { polling: false });
+// Enable polling so the bot can also listen to user messages (e.g., /start or /predict)
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 let lastSentPeriod = "";
 let lastPredictedResult = null;
@@ -170,11 +171,16 @@ function masterGuidePatternEngine(history) {
     }
 }
 
+// Telegram Bot Command Listeners
+bot.onText(/\/start/, (msg) => {
+    bot.sendMessage(msg.chat.id, "👋 Vanakkam! WinGo 30S Master Guide Bot active-la irukku. Predictions auto-va varum!");
+});
+
 app.get('/', (req, res) => res.send('Master Guide Pattern Engine Active!'));
 
 /*
 =========================================================
-FETCH WINGO DATA VIA SCRAPINGANT (1 Credit Optimized)
+FETCH WINGO DATA VIA SCRAPINGANT (Optimized Credits)
 =========================================================
 */
 async function fetchWinGoData() {
@@ -208,7 +214,7 @@ async function fetchWinGoData() {
         let secondsIntoPeriod = currentSec % 30;
 
         if (nextPeriod === lastSentPeriod) return;
-        // Only trigger during the specific second window to avoid wasting requests/credits
+        // Optimized time window to save credits (1 credit per check)
         if (secondsIntoPeriod < 23 || secondsIntoPeriod > 25) return;
 
         let dynamicStatusMsg = "";
@@ -331,7 +337,7 @@ async function fetchWinGoData() {
 async function startContinuousLoop() {
     while (true) {
         await fetchWinGoData();
-        // Checked every 3 seconds to preserve ScrapingAnt credits efficiently
+        // 3 seconds interval to optimize credits
         await new Promise(r => setTimeout(r, 3000));
     }
 }
